@@ -1,0 +1,124 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ============================================
+// DEVICE (Mesin Absensi)
+// ============================================
+model Device {
+  id        String    @id @default(cuid())
+  cloudId   String    @unique @map("cloud_id")
+  name      String
+  status    String    @default("OFFLINE")
+  timezone  String    @default("Asia/Jakarta")
+  lastSync  DateTime? @map("last_sync")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@map("devices")
+}
+
+// ============================================
+// ATTENDANCE LOG (Data Absensi)
+// ============================================
+model AttendanceLog {
+  id           String   @id @default(cuid())
+  employeePin  String   @map("employee_pin")
+  deviceCloudId String  @map("device_cloud_id")
+  scanTime     DateTime @map("scan_time")
+  verifyMethod Int?     @map("verify_method")
+  statusScan   Int?     @map("status_scan")
+  status       String   @default("IN")
+  source       String   @default("realtime")
+  rawPayload   Json?    @map("raw_payload")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([employeePin])
+  @@index([deviceCloudId])
+  @@index([scanTime])
+  @@map("attendance_logs")
+}
+
+// ============================================
+// USER INFO (Data User dari Mesin)
+// ============================================
+model UserInfo {
+  id          String   @id @default(cuid())
+  pin         String   @unique
+  name        String
+  password    String?
+  privilege   Int      @default(1)
+  finger      Int      @default(0)
+  face        Int      @default(0)
+  rfid        Int      @default(0)
+  vein        Int      @default(0)
+  template    String?
+  deviceCloudId String? @map("device_cloud_id")
+  rawPayload  Json?    @map("raw_payload")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("user_infos")
+}
+
+// ============================================
+// PIN LIST (Daftar PIN dari Mesin)
+// ============================================
+model PinList {
+  id            String   @id @default(cuid())
+  deviceCloudId String   @map("device_cloud_id")
+  pin           String
+  total         Int?
+  rawPayload    Json?    @map("raw_payload")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([deviceCloudId])
+  @@map("pin_lists")
+}
+
+// ============================================
+// API LOG (Riwayat Request API)
+// ============================================
+model ApiLog {
+  id              String   @id @default(cuid())
+  command         String
+  deviceCloudId   String   @map("device_cloud_id")
+  transId         String?  @map("trans_id")
+  status          String   @default("PENDING")
+  requestPayload  Json?    @map("request_payload")
+  responsePayload Json?    @map("response_payload")
+  errorMessage    String?  @map("error_message")
+  duration        Int?
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([command])
+  @@index([status])
+  @@index([createdAt])
+  @@map("api_logs")
+}
+
+// ============================================
+// WEBHOOK LOG (Riwayat Response Webhook)
+// ============================================
+model WebhookLog {
+  id            String   @id @default(cuid())
+  type          String
+  deviceCloudId String   @map("device_cloud_id")
+  transId       String?  @map("trans_id")
+  status        String   @default("SUCCESS")
+  payload       Json?
+  processedAt   DateTime @default(now()) @map("processed_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([type])
+  @@index([deviceCloudId])
+  @@index([createdAt])
+  @@map("webhook_logs")
+}
