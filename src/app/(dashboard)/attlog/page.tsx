@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { formatDateTime, getVerifyMethod, getStatusScan } from "@/lib/utils";
-import { Download, Search } from "lucide-react";
+import { Download, Search, ChevronLeft, ChevronRight, Fingerprint } from "lucide-react";
 
 interface AttlogEntry {
   id: string;
@@ -83,17 +83,22 @@ export default function AttlogPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Data Absensi</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Riwayat scan absensi dari mesin
-        </p>
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50">
+          <Fingerprint className="h-5 w-5 text-blue-600" />
+        </div>
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">Data Absensi</h1>
+          <p className="text-[13px] text-gray-400">
+            Riwayat scan absensi dari mesin
+          </p>
+        </div>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-wrap items-end gap-4">
+      <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+        <div className="flex flex-wrap items-end gap-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-[13px] font-medium text-gray-500">
               PIN Karyawan
             </label>
             <input
@@ -101,29 +106,29 @@ export default function AttlogPage() {
               value={pin}
               onChange={(e) => setPin(e.target.value)}
               placeholder="Semua"
-              className="mt-1 block w-40 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="mt-1.5 block w-36 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-[13px] focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-[13px] font-medium text-gray-500">
               Dari Tanggal
             </label>
             <input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="mt-1 block rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="mt-1.5 block rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-[13px] focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-[13px] font-medium text-gray-500">
               Sampai Tanggal
             </label>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="mt-1 block rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="mt-1.5 block rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-[13px] focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
           <button
@@ -131,7 +136,7 @@ export default function AttlogPage() {
               setPage(1);
               fetchData();
             }}
-            className="inline-flex items-center gap-2 rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
+            className="inline-flex items-center gap-2 rounded-xl bg-gray-100 px-4 py-2 text-[13px] font-medium text-gray-600 hover:bg-gray-200 transition-colors"
           >
             <Search className="h-4 w-4" />
             Filter
@@ -139,7 +144,7 @@ export default function AttlogPage() {
           <button
             onClick={handleFetchFromDevice}
             disabled={fetching}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-[13px] font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm shadow-blue-200"
           >
             <Download className="h-4 w-4" />
             {fetching ? "Mengirim..." : "Ambil dari Mesin"}
@@ -147,70 +152,65 @@ export default function AttlogPage() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-gray-200 bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 font-medium text-gray-500">PIN</th>
-                <th className="px-4 py-3 font-medium text-gray-500">
-                  Waktu Scan
-                </th>
-                <th className="px-4 py-3 font-medium text-gray-500">Status</th>
-                <th className="px-4 py-3 font-medium text-gray-500">
-                  Verifikasi
-                </th>
-                <th className="px-4 py-3 font-medium text-gray-500">
-                  Status Scan
-                </th>
-                <th className="px-4 py-3 font-medium text-gray-500">Sumber</th>
+          <table className="w-full text-left text-[13px]">
+            <thead>
+              <tr className="border-b border-gray-100 bg-gray-50/50">
+                <th className="px-4 py-3 font-medium text-gray-400">PIN</th>
+                <th className="px-4 py-3 font-medium text-gray-400">Waktu Scan</th>
+                <th className="px-4 py-3 font-medium text-gray-400">Status</th>
+                <th className="px-4 py-3 font-medium text-gray-400">Verifikasi</th>
+                <th className="px-4 py-3 font-medium text-gray-400">Status Scan</th>
+                <th className="px-4 py-3 font-medium text-gray-400">Sumber</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-50">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                    Loading...
+                  <td colSpan={6} className="px-4 py-12 text-center text-gray-300">
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                      Memuat...
+                    </div>
                   </td>
                 </tr>
               ) : data.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                    Tidak ada data
+                  <td colSpan={6} className="px-4 py-12 text-center text-gray-300">
+                    Tidak ada data ditemukan
                   </td>
                 </tr>
               ) : (
                 data.map((row) => (
-                  <tr key={row.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-mono">{row.employeePin}</td>
-                    <td className="px-4 py-3">{formatDateTime(row.scanTime)}</td>
+                  <tr key={row.id} className="hover:bg-gray-50/50 transition-colors">
+                    <td className="px-4 py-3 font-mono text-gray-700">{row.employeePin}</td>
+                    <td className="px-4 py-3 text-gray-600">{formatDateTime(row.scanTime)}</td>
                     <td className="px-4 py-3">
                       <span
-                        className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${
+                        className={`inline-flex rounded-lg px-2.5 py-1 text-[11px] font-semibold ${
                           row.status === "IN"
                             ? "bg-emerald-50 text-emerald-700"
-                            : "bg-amber-50 text-amber-700"
+                            : row.status === "OUT"
+                              ? "bg-amber-50 text-amber-700"
+                              : "bg-gray-100 text-gray-600"
                         }`}
                       >
                         {row.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
-                      {row.verifyMethod
-                        ? getVerifyMethod(row.verifyMethod)
-                        : "-"}
+                    <td className="px-4 py-3 text-gray-600">
+                      {row.verifyMethod ? getVerifyMethod(row.verifyMethod) : "-"}
                     </td>
-                    <td className="px-4 py-3">
-                      {row.statusScan != null
-                        ? getStatusScan(row.statusScan)
-                        : "-"}
+                    <td className="px-4 py-3 text-gray-600">
+                      {row.statusScan != null ? getStatusScan(row.statusScan) : "-"}
                     </td>
                     <td className="px-4 py-3">
                       <span
-                        className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${
+                        className={`inline-flex rounded-lg px-2.5 py-1 text-[11px] font-semibold ${
                           row.source === "realtime"
                             ? "bg-blue-50 text-blue-700"
-                            : "bg-gray-100 text-gray-700"
+                            : "bg-gray-100 text-gray-500"
                         }`}
                       >
                         {row.source}
@@ -223,27 +223,27 @@ export default function AttlogPage() {
           </table>
         </div>
         {totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-gray-200 px-4 py-3">
-            <span className="text-sm text-gray-500">
+          <div className="flex items-center justify-between border-t border-gray-100 px-4 py-3 bg-gray-50/30">
+            <span className="text-[13px] text-gray-400">
               Total {total.toLocaleString("id-ID")} data
             </span>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-1">
               <button
                 onClick={() => setPage(Math.max(1, page - 1))}
                 disabled={page === 1}
-                className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 disabled:opacity-50"
+                className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 disabled:opacity-30 transition-colors"
               >
-                Sebelumnya
+                <ChevronLeft className="h-4 w-4" />
               </button>
-              <span className="px-3 py-1.5 text-sm text-gray-700">
+              <span className="px-3 py-1 text-[13px] font-medium text-gray-600">
                 {page} / {totalPages}
               </span>
               <button
                 onClick={() => setPage(Math.min(totalPages, page + 1))}
                 disabled={page === totalPages}
-                className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 disabled:opacity-50"
+                className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 disabled:opacity-30 transition-colors"
               >
-                Selanjutnya
+                <ChevronRight className="h-4 w-4" />
               </button>
             </div>
           </div>

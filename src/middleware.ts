@@ -5,17 +5,15 @@ const SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || "fingerspot-secret-key-change-in-production"
 );
 
-const PUBLIC_PATHS = ["/login", "/api/auth/login"];
+const PUBLIC_PATHS = ["/login", "/api/auth/login", "/api/webhook/fingerspot"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow public paths
   if (PUBLIC_PATHS.includes(pathname)) {
     return NextResponse.next();
   }
 
-  // Allow static files and API auth routes
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
@@ -24,7 +22,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check auth token
   const token = request.cookies.get("fingerspot-auth")?.value;
 
   if (!token) {
@@ -35,7 +32,6 @@ export async function middleware(request: NextRequest) {
     await jwtVerify(token, SECRET);
     return NextResponse.next();
   } catch {
-    // Invalid token, redirect to login
     const response = NextResponse.redirect(new URL("/login", request.url));
     response.cookies.delete("fingerspot-auth");
     return response;

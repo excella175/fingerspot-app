@@ -11,9 +11,12 @@ export async function POST(request: NextRequest) {
     let result;
 
     switch (command) {
+      // Attendance
       case "get_attlog":
         result = await fingerspot.getAttlog(params.startDate, params.endDate);
         break;
+
+      // User Management
       case "get_userinfo":
         result = await fingerspot.getUserInfo(params.pin, params.transId);
         break;
@@ -26,15 +29,29 @@ export async function POST(request: NextRequest) {
       case "get_all_pin":
         result = await fingerspot.getAllPin(params.transId);
         break;
-      case "set_time":
-        result = await fingerspot.setTime(params.timezone);
-        break;
       case "reg_online":
         result = await fingerspot.registerOnline(params.pin, params.verification);
+        break;
+
+      // Device Management
+      case "get_device":
+        result = await fingerspot.getDevice(params.transId);
+        break;
+      case "set_time":
+        result = await fingerspot.setTime(params.timezone);
         break;
       case "restart_device":
         result = await fingerspot.restartDevice(params.transId);
         break;
+
+      // QR Code (VIDA Series)
+      case "set_qrcode":
+        result = await fingerspot.setQrCode(params.pin, params.qrString);
+        break;
+      case "get_qrcode":
+        result = await fingerspot.getQrCode(params.pin);
+        break;
+
       default:
         return NextResponse.json(
           { success: false, error: "Unknown command" },
@@ -44,7 +61,6 @@ export async function POST(request: NextRequest) {
 
     const duration = Date.now() - startTime;
 
-    // Log API call
     await prisma.apiLog.create({
       data: {
         command,

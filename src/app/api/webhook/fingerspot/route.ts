@@ -4,20 +4,23 @@ import { prisma } from "@/lib/prisma";
 interface WebhookPayload {
   type: string;
   cloud_id: string;
-  trans_id?: number;
+  trans_id?: number | string;
   data: Record<string, any>;
 }
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
+  let body: WebhookPayload | null = null;
 
   try {
-    const body: WebhookPayload = await request.json();
+    body = await request.json();
+    if (!body) {
+      return NextResponse.json({ status: "error" }, { status: 400 });
+    }
     const { type, cloud_id, trans_id, data } = body;
 
     console.log("[Webhook] Received:", type, cloud_id);
 
-    // Log webhook
     await prisma.webhookLog.create({
       data: {
         type,
@@ -28,22 +31,24 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Process based on type
     switch (type) {
       case "attlog":
         await handleAttlog(cloud_id, data);
         break;
+      case "get_userinfo":
       case "userinfo":
         await handleUserinfo(cloud_id, data);
+        break;
+      case "get_userid_list":
+        await handlePinList(cloud_id, data);
         break;
       case "set_userinfo":
       case "delete_userinfo":
       case "set_time":
       case "reg_online":
-        // Command responses - logged only
-        break;
-      case "get_userid_list":
-        await handlePinList(cloud_id, data);
+      case "restart_device":
+      case "set_qrcode":
+      case "get_qrcode":
         break;
       default:
         console.log("[Webhook] Unknown type:", type);
@@ -56,10 +61,8 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("[Webhook] Error:", error);
 
-    // Try to log failed webhook
-    try {
-      const body = await request.json().catch(() => null);
-      if (body) {
+    if (body) {
+      try {
         await prisma.webhookLog.create({
           data: {
             type: body.type || "unknown",
@@ -68,9 +71,9 @@ export async function POST(request: NextRequest) {
             payload: body as any,
           },
         });
+      } catch {
+        // ignore logging errors
       }
-    } catch {
-      // ignore
     }
 
     return NextResponse.json({ status: "error" }, { status: 500 });
@@ -81,38 +84,29 @@ async function handleAttlog(cloudId: string, data: Record<string, any>) {
   const { pin, scan, verify, status_scan } = data;
   if (!pin || !scan) return;
 
-  // Parse scan time (WIB = UTC+7)
   const scanTimeStr = String(scan).replace(" ", "T") + "+07:00";
   const scanTime = new Date(scanTimeStr);
 
-  // Check duplicate
   const existing = await prisma.attendanceLog.findFirst({
     where: { employeePin: String(pin), deviceCloudId: cloudId, scanTime },
   });
   if (existing) return;
 
-  // Determine IN/OUT based on count today
-  const wibDate = new Date(scanTime.getTime() + 7 * 60 * 60 * 1000);
-  const wibDateStr = `${wibDate.getUTCFullYear()}-${String(wibDate.getUTCMonth() + 1).padStart(2, "0")}-${String(wibDate.getUTCDate()).padStart(2, "0")}`;
-  const startOfDay = new Date(`${wibDateStr}T00:00:00+07:00`);
-  const endOfDay = new Date(`${wibDateStr}T23:59:59.999+07:00`);
-
-  const todayCount = await prisma.attendanceLog.count({
-    where: {
-      employeePin: String(pin),
-      scanTime: { gte: startOfDay, lte: endOfDay },
-    },
-  });
-
-  const status = todayCount % 2 === 0 ? "IN" : "OUT";
+  const statusMap: Record<number, string> = {
+    0: "IN",
+    1: "OUT",
+    2: "BREAK_IN",
+    3: "BREAK_OUT",
+  };
+  const status = statusMap[Number(status_scan)] || "IN";
 
   await prisma.attendanceLog.create({
     data: {
       employeePin: String(pin),
       deviceCloudId: cloudId,
       scanTime,
-      verifyMethod: verify || null,
-      statusScan: status_scan || null,
+      verifyMethod: verify != null ? Number(verify) : null,
+      statusScan: status_scan != null ? Number(status_scan) : null,
       status,
       source: "realtime",
       rawPayload: data as any,
@@ -122,31 +116,31 @@ async function handleAttlog(cloudId: string, data: Record<string, any>) {
 
 async function handleUserinfo(cloudId: string, data: Record<string, any>) {
   const { pin, name, password, privilege, finger, face, rfid, vein, template } = data;
-  if (!pin || !name) return;
+  if (!pin) return;
 
   await prisma.userInfo.upsert({
     where: { pin: String(pin) },
     update: {
-      name: String(name),
-      password: password || null,
-      privilege: privilege || 1,
-      finger: finger || 0,
-      face: face || 0,
-      rfid: rfid || 0,
-      vein: vein || 0,
-      template: template || null,
+      name: name ? String(name) : undefined,
+      password: password || undefined,
+      privilege: privilege != null ? Number(privilege) : undefined,
+      finger: finger != null ? Number(finger) : undefined,
+      face: face != null ? Number(face) : undefined,
+      rfid: rfid != null ? Number(rfid) : undefined,
+      vein: vein != null ? Number(vein) : undefined,
+      template: template || undefined,
       deviceCloudId: cloudId,
       rawPayload: data as any,
     },
     create: {
       pin: String(pin),
-      name: String(name),
+      name: name ? String(name) : "Unknown",
       password: password || null,
-      privilege: privilege || 1,
-      finger: finger || 0,
-      face: face || 0,
-      rfid: rfid || 0,
-      vein: vein || 0,
+      privilege: privilege != null ? Number(privilege) : 1,
+      finger: finger != null ? Number(finger) : 0,
+      face: face != null ? Number(face) : 0,
+      rfid: rfid != null ? Number(rfid) : 0,
+      vein: vein != null ? Number(vein) : 0,
       template: template || null,
       deviceCloudId: cloudId,
       rawPayload: data as any,
@@ -158,7 +152,10 @@ async function handlePinList(cloudId: string, data: Record<string, any>) {
   const { total, pin_arr } = data;
   if (!pin_arr || !Array.isArray(pin_arr)) return;
 
-  // Save each pin
+  await prisma.pinList.deleteMany({
+    where: { deviceCloudId: cloudId },
+  });
+
   for (const pin of pin_arr) {
     await prisma.pinList.create({
       data: {

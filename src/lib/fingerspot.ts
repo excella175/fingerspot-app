@@ -56,15 +56,24 @@ async function callAPI(
   }
 }
 
+// ============================================
+// ATTENDANCE
+// ============================================
+
 export async function getAttlog(startDate: string, endDate: string) {
   return callAPI("get_attlog", {
+    trans_id: Date.now().toString(),
     start_date: startDate,
     end_date: endDate,
   });
 }
 
-export async function getUserInfo(pin: string, transId: string = "1") {
-  return callAPI("get_userinfo", { pin, trans_id: transId });
+// ============================================
+// USER MANAGEMENT
+// ============================================
+
+export async function getUserInfo(pin: string, transId?: string) {
+  return callAPI("get_userinfo", { pin, trans_id: transId || Date.now().toString() });
 }
 
 export async function setUserInfo(userData: {
@@ -75,7 +84,7 @@ export async function setUserInfo(userData: {
   privilege?: string;
 }) {
   return callAPI("set_userinfo", {
-    trans_id: "1",
+    trans_id: Date.now().toString(),
     data: {
       pin: userData.pin,
       name: userData.name,
@@ -88,21 +97,48 @@ export async function setUserInfo(userData: {
 }
 
 export async function deleteUserInfo(pin: string) {
-  return callAPI("delete_userinfo", { trans_id: "1", pin });
+  return callAPI("delete_userinfo", { trans_id: Date.now().toString(), pin });
 }
 
-export async function getAllPin(transId: string = "1") {
-  return callAPI("get_all_pin", { trans_id: transId });
-}
-
-export async function setTime(timezone: string = "Asia/Jakarta") {
-  return callAPI("set_time", { timezone });
+export async function getAllPin(transId?: string) {
+  return callAPI("get_all_pin", { trans_id: transId || Date.now().toString() });
 }
 
 export async function registerOnline(pin: string, verification: string = "0") {
-  return callAPI("reg_online", { trans_id: "1", pin, verification });
+  return callAPI("reg_online", { trans_id: Date.now().toString(), pin, verification });
 }
 
-export async function restartDevice(transId: string = "1") {
-  return callAPI("restart_device", { trans_id: transId });
+// ============================================
+// DEVICE MANAGEMENT
+// ============================================
+
+export async function getDevice(transId?: string) {
+  return callAPI("get_device", { trans_id: transId || Date.now().toString() });
+}
+
+export async function setTime(timezone: string = "Asia/Jakarta") {
+  return callAPI("set_time", { trans_id: Date.now().toString(), timezone });
+}
+
+export async function restartDevice(transId?: string) {
+  return callAPI("restart_device", { trans_id: transId || Date.now().toString() });
+}
+
+// ============================================
+// QR CODE (VIDA Series)
+// ============================================
+
+export async function setQrCode(pin: string, qrString: string) {
+  return callAPI("set_qrcode", {
+    trans_id: Date.now().toString(),
+    pin,
+    qr_string: qrString,
+  });
+}
+
+export async function getQrCode(pin: string) {
+  return callAPI("get_qrcode", {
+    trans_id: Date.now().toString(),
+    pin,
+  });
 }
