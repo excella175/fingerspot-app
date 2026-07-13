@@ -2,10 +2,24 @@ import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 
 const SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "fingerspot-secret-key-change-in-production"
+  process.env.JWT_SECRET || "fingerspot-secret-key-change-in-production",
 );
 
-const PUBLIC_PATHS = ["/login", "/api/auth/login", "/api/webhook/fingerspot"];
+// Endpoints yang harus tetap bisa diakses tanpa cookie auth,
+// supaya dashboard API (data absensi/user/pins/stats) tidak ke-redirect ke /login.
+const PUBLIC_PATHS = [
+  "/login",
+  "/api/auth/login",
+  "/api/webhook/fingerspot",
+  "/api/attlog",
+  "/api/userinfo",
+  "/api/pins",
+  "/api/stats",
+  "/api/api-logs",
+  "/api/webhook-logs",
+  "/api/payload",
+  "/api/fingerspot",
+];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

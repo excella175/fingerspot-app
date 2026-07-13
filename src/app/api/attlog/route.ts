@@ -13,9 +13,11 @@ export async function GET(request: NextRequest) {
     const where: any = {};
     if (pin) where.employeePin = pin;
     if (startDate && endDate) {
+      // Fingerspot payload scan_date biasanya tanpa timezone (contoh: "2026-06-29 16:41:10").
+      // Di webhook kita normalisasi menjadi +07:00, jadi filter di sini harus konsisten (+07:00).
       where.scanTime = {
-        gte: new Date(startDate),
-        lte: new Date(endDate + "T23:59:59"),
+        gte: new Date(`${startDate}T00:00:00+07:00`),
+        lte: new Date(`${endDate}T23:59:59+07:00`),
       };
     }
 
@@ -33,7 +35,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     return NextResponse.json(
       { error: "Failed to fetch attendance logs" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
