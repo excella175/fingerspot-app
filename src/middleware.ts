@@ -5,20 +5,11 @@ const SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || "fingerspot-secret-key-change-in-production",
 );
 
-// Endpoints yang harus tetap bisa diakses tanpa cookie auth,
-// supaya dashboard API (data absensi/user/pins/stats) tidak ke-redirect ke /login.
+// Endpoints yang harus tetap bisa diakses tanpa cookie auth
 const PUBLIC_PATHS = [
   "/login",
   "/api/auth/login",
   "/api/webhook/fingerspot",
-  "/api/attlog",
-  "/api/userinfo",
-  "/api/pins",
-  "/api/stats",
-  "/api/api-logs",
-  "/api/webhook-logs",
-  "/api/payload",
-  "/api/fingerspot",
 ];
 
 export async function middleware(request: NextRequest) {

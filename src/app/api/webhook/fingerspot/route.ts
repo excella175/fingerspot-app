@@ -13,6 +13,16 @@ export async function POST(request: NextRequest) {
   let body: WebhookPayload | null = null;
 
   try {
+    // Verifikasi webhook secret dari header
+    const webhookSecret = process.env.FINGERSPOT_WEBHOOK_SECRET;
+    if (webhookSecret) {
+      const authHeader = request.headers.get("authorization") || request.headers.get("x-webhook-secret");
+      if (authHeader !== webhookSecret && authHeader !== `Bearer ${webhookSecret}`) {
+        console.error("[Webhook] Invalid secret");
+        return NextResponse.json({ status: "unauthorized" }, { status: 401 });
+      }
+    }
+
     body = await request.json();
     if (!body) {
       return NextResponse.json({ status: "error" }, { status: 400 });
@@ -40,9 +50,17 @@ export async function POST(request: NextRequest) {
 
     switch (type) {
       // attendance (device push)
-      case "attlog":
-        await handleAttlog(cloud_id, data);
+      case "attlog": {
+        const attData = normalizedData;
+        if (Array.isArray(attData)) {
+          await handleAttlogArray(cloud_id, attData);
+        } else if (attData && typeof attData === "object") {
+          await handleAttlog(cloud_id, attData);
+        } else {
+          await handleAttlog(cloud_id, data);
+        }
         break;
+      }
 
       // attendance (developer API response via webhook). Payload usually: { data: [ { pin, scan_date, ... } ] }
       case "get_attlog": {
@@ -50,7 +68,6 @@ export async function POST(request: NextRequest) {
         if (Array.isArray(rows)) {
           await handleAttlogArray(cloud_id, rows);
         } else if (rows && typeof rows === "object") {
-          // beberapa payload: { data: [ ... ] } sudah di-normalize jadi array/object
           const maybeRows = (rows as any).data ?? rows;
           if (Array.isArray(maybeRows)) {
             await handleAttlogArray(cloud_id, maybeRows);
@@ -58,19 +75,22 @@ export async function POST(request: NextRequest) {
             await handleAttlog(cloud_id, maybeRows);
           }
         } else {
-          // fallback: kalau unexpected, coba direct
           await handleAttlog(cloud_id, rows as any);
         }
         break;
       }
 
       case "get_userinfo":
-      case "userinfo":
-        await handleUserinfo(cloud_id, data);
+      case "userinfo": {
+        const userData = normalizedData && typeof normalizedData === "object" ? normalizedData : data;
+        await handleUserinfo(cloud_id, userData);
         break;
-      case "get_userid_list":
-        await handlePinList(cloud_id, data);
+      }
+      case "get_userid_list": {
+        const pinData = normalizedData && typeof normalizedData === "object" ? normalizedData : data;
+        await handlePinList(cloud_id, pinData);
         break;
+      }
       case "set_userinfo":
       case "delete_userinfo":
       case "set_time":
@@ -223,10 +243,19 @@ type AttlogRow = {
   statusScan?: number | string;
 };
 
-function handleAttlogArray(cloudId: string, rows: unknown[]) {
-  return Promise.all(
+async function handleAttlogArray(cloudId: string, rows: unknown[]) {
+  const results = await Promise.allSettled(
     rows.map((row) => handleAttlog(cloudId, row as AttlogRow)),
   );
+  const failed = results.filter((r) => r.status === "rejected");
+  if (failed.length > 0) {
+    console.error("[Webhook][attlog] Batch errors:", failed.length, "of", rows.length);
+    failed.forEach((f, i) => {
+      if (f.status === "rejected") console.error(`  Row ${i}:`, f.reason);
+    });
+  }
+  const saved = results.filter((r) => r.status === "fulfilled").length;
+  console.log("[Webhook][attlog] Batch saved:", saved, "of", rows.length);
 }
 
 async function handleUserinfo(cloudId: string, data: Record<string, any>) {
