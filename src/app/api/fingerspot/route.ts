@@ -2,6 +2,74 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import * as fingerspot from "@/lib/fingerspot";
 
+function parseScanTime(scanDate: string): Date | null {
+  // Fingerspot developer API: "YYYY-MM-DD HH:mm:ss" (no timezone)
+  // Kita simpan konsisten dengan webhook: pakai +07:00
+  // Juga support fallback jika sudah ISO
+  try {
+    const scanStr = String(scanDate);
+    const normalized = scanStr.includes("T")
+      ? scanStr
+      : scanStr.replace(" ", "T");
+    const hasTz = /([zZ]|[+-]\d{2}:?\d{2})$/.test(scanStr);
+    const dt = hasTz ? new Date(normalized) : new Date(`${normalized}+07:00`);
+    return Number.isNaN(dt.getTime()) ? null : dt;
+  } catch {
+    return null;
+  }
+}
+
+async function upsertAttendanceFromGetAttlogRows(cloudId: string, rows: any[]) {
+  // Catatan: "jangan dobel" => dedupe pakai kombinasi seperti webhook.
+  // Jika ingin benar-benar tidak dobel, kita cari existing sebelum create.
+  // (Tanpa schema unique constraint, ini satu-satunya cara dengan prisma yang ada sekarang.)
+  for (const row of rows) {
+    const pin = row?.pin ?? row?.employee_pin ?? row?.employeePin;
+    const scanDate =
+      row?.scan_date ?? row?.scanDate ?? row?.scan_date_time ?? row?.scan;
+    const verify = row?.verify ?? row?.verify_method ?? row?.verifyMethod;
+    const statusScan = row?.status_scan ?? row?.statusScan;
+
+    if (pin == null || scanDate == null) continue;
+
+    const scanTime = parseScanTime(String(scanDate));
+    if (!scanTime) continue;
+
+    const statusScanNum = statusScan != null ? Number(statusScan) : null;
+
+    const existing = await prisma.attendanceLog.findFirst({
+      where: {
+        employeePin: String(pin),
+        deviceCloudId: cloudId,
+        scanTime,
+        statusScan: statusScanNum,
+      },
+    });
+    if (existing) continue;
+
+    const statusMap: Record<number, string> = {
+      0: "IN",
+      1: "OUT",
+      2: "BREAK_IN",
+      3: "BREAK_OUT",
+    };
+    const status = statusMap[Number(statusScanNum)] || "IN";
+
+    await prisma.attendanceLog.create({
+      data: {
+        employeePin: String(pin),
+        deviceCloudId: cloudId,
+        scanTime,
+        verifyMethod: verify != null ? Number(verify) : null,
+        statusScan: statusScanNum,
+        status,
+        source: "realtime",
+        rawPayload: row as any,
+      },
+    });
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -12,9 +80,22 @@ export async function POST(request: NextRequest) {
 
     switch (command) {
       // Attendance
-      case "get_attlog":
+      case "get_attlog": {
         result = await fingerspot.getAttlog(params.startDate, params.endDate);
+
+        // Sinkron sinkron: jika success, langsung insert ke attendance_logs
+        // Tidak double: gunakan dedupe seperti webhook.
+        if (
+          result?.success === true &&
+          Array.isArray(result?.data) &&
+          (cloudId || body?.cloudId)
+        ) {
+          const targetCloudId =
+            cloudId || process.env.FINGERSPOT_CLOUD_ID || "";
+          await upsertAttendanceFromGetAttlogRows(targetCloudId, result.data);
+        }
         break;
+      }
 
       // User Management
       case "get_userinfo":
@@ -30,7 +111,10 @@ export async function POST(request: NextRequest) {
         result = await fingerspot.getAllPin(params.transId);
         break;
       case "reg_online":
-        result = await fingerspot.registerOnline(params.pin, params.verification);
+        result = await fingerspot.registerOnline(
+          params.pin,
+          params.verification,
+        );
         break;
 
       // Device Management
@@ -55,7 +139,7 @@ export async function POST(request: NextRequest) {
       default:
         return NextResponse.json(
           { success: false, error: "Unknown command" },
-          { status: 400 }
+          { status: 400 },
         );
     }
 
@@ -82,7 +166,7 @@ export async function POST(request: NextRequest) {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
