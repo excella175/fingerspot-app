@@ -2,7 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { formatDateTime, getVerifyMethod, getStatusScan } from "@/lib/utils";
-import { Download, Search, ChevronLeft, ChevronRight, Fingerprint } from "lucide-react";
+import {
+  Download,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  Fingerprint,
+} from "lucide-react";
 
 interface AttlogEntry {
   id: string;
@@ -50,6 +56,14 @@ export default function AttlogPage() {
   useEffect(() => {
     fetchData();
   }, [page]);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      fetchData();
+    }, 10000);
+
+    return () => window.clearInterval(interval);
+  }, [page, pin, startDate, endDate]);
 
   const handleFetchFromDevice = async () => {
     if (!startDate || !endDate) {
@@ -158,17 +172,26 @@ export default function AttlogPage() {
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/50">
                 <th className="px-4 py-3 font-medium text-gray-400">PIN</th>
-                <th className="px-4 py-3 font-medium text-gray-400">Waktu Scan</th>
+                <th className="px-4 py-3 font-medium text-gray-400">
+                  Waktu Scan
+                </th>
                 <th className="px-4 py-3 font-medium text-gray-400">Status</th>
-                <th className="px-4 py-3 font-medium text-gray-400">Verifikasi</th>
-                <th className="px-4 py-3 font-medium text-gray-400">Status Scan</th>
+                <th className="px-4 py-3 font-medium text-gray-400">
+                  Verifikasi
+                </th>
+                <th className="px-4 py-3 font-medium text-gray-400">
+                  Status Scan
+                </th>
                 <th className="px-4 py-3 font-medium text-gray-400">Sumber</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-gray-300">
+                  <td
+                    colSpan={6}
+                    className="px-4 py-12 text-center text-gray-300"
+                  >
                     <div className="flex items-center justify-center gap-2">
                       <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
                       Memuat...
@@ -177,15 +200,25 @@ export default function AttlogPage() {
                 </tr>
               ) : data.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-gray-300">
+                  <td
+                    colSpan={6}
+                    className="px-4 py-12 text-center text-gray-300"
+                  >
                     Tidak ada data ditemukan
                   </td>
                 </tr>
               ) : (
                 data.map((row) => (
-                  <tr key={row.id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="px-4 py-3 font-mono text-gray-700">{row.employeePin}</td>
-                    <td className="px-4 py-3 text-gray-600">{formatDateTime(row.scanTime)}</td>
+                  <tr
+                    key={row.id}
+                    className="hover:bg-gray-50/50 transition-colors"
+                  >
+                    <td className="px-4 py-3 font-mono text-gray-700">
+                      {row.employeePin}
+                    </td>
+                    <td className="px-4 py-3 text-gray-600">
+                      {formatDateTime(row.scanTime)}
+                    </td>
                     <td className="px-4 py-3">
                       <span
                         className={`inline-flex rounded-lg px-2.5 py-1 text-[11px] font-semibold ${
@@ -200,10 +233,14 @@ export default function AttlogPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-gray-600">
-                      {row.verifyMethod ? getVerifyMethod(row.verifyMethod) : "-"}
+                      {row.verifyMethod
+                        ? getVerifyMethod(row.verifyMethod)
+                        : "-"}
                     </td>
                     <td className="px-4 py-3 text-gray-600">
-                      {row.statusScan != null ? getStatusScan(row.statusScan) : "-"}
+                      {row.statusScan != null
+                        ? getStatusScan(row.statusScan)
+                        : "-"}
                     </td>
                     <td className="px-4 py-3">
                       <span
