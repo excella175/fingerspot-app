@@ -53,16 +53,22 @@ export default function UserinfoPage() {
       const res = await fetch("/api/fingerspot", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ command: "get_all_pin", params: {} }),
+        body: JSON.stringify({ command: "sync_users", params: {} }),
       });
       const result = await res.json();
-      if (result.success) {
-        alert("Perintah get_all_pin berhasil dikirim! Data akan muncul via webhook.");
+      if (result.success && result.sync) {
+        const msg =
+          `✅ Sinkron selesai!\n` +
+          `PIN ditemukan: ${result.sync.pinsFound}\n` +
+          `User baru: ${result.sync.usersCreated}\n` +
+          (result.note ? `\n${result.note}` : "");
+        alert(msg);
+        fetchData();
       } else {
-        alert("Gagal: " + (result.error || "Unknown error"));
+        alert("❌ Gagal: " + (result.error || "Unknown error"));
       }
     } catch {
-      alert("Gagal mengirim perintah");
+      alert("❌ Gagal mengirim perintah");
     }
     setSyncing(false);
   };

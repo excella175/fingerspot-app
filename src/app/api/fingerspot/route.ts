@@ -3,141 +3,41 @@ import { prisma } from "@/lib/prisma";
 import * as fingerspot from "@/lib/fingerspot";
 import { extractAttlogRows, parseScanTime } from "@/lib/fingerspot-payload";
 
-function normalizeUserInfoRows(value: unknown): Array<Record<string, any>> {
-  if (Array.isArray(value)) {
-    return value.filter(
-      (item): item is Record<string, any> =>
-        typeof item === "object" && item !== null,
-    );
-  }
-
-  if (typeof value === "object" && value !== null) {
-    const record = value as Record<string, any>;
-    const directKeys = [
-      "pin",
-      "employee_pin",
-      "employeePin",
-      "name",
-      "password",
-      "privilege",
-      "finger",
-      "face",
-      "rfid",
-      "vein",
-      "template",
-      "user_id",
-      "userId",
-    ];
-
-    if (directKeys.some((key) => key in record)) {
-      return [record];
-    }
-
-    for (const key of [
-      "data",
-      "result",
-      "response",
-      "userinfo",
-      "user",
-      "users",
-      "rows",
-      "list",
-    ]) {
-      if (key in record) {
-        const nested = normalizeUserInfoRows(record[key]);
-        if (nested.length > 0) {
-          return nested;
-        }
-      }
-    }
-  }
-
-  return [];
-}
-
-async function upsertUserInfoFromApiPayload(cloudId: string, payload: unknown) {
-  const rows = normalizeUserInfoRows(payload);
-  if (!rows.length) return { created: 0, updated: 0, skipped: 0 };
-
+async function upsertUserInfoBatch(cloudId: string, rows: { pin: string; name: string }[]) {
   let created = 0;
   let updated = 0;
-  let skipped = 0;
 
-  for (const row of rows) {
-    const pin =
-      row.pin ??
-      row.employee_pin ??
-      row.employeePin ??
-      row.user_id ??
-      row.userId;
-    if (!pin) {
-      skipped++;
-      continue;
-    }
-
-    const name =
-      row.name ??
-      row.user_name ??
-      row.username ??
-      row.full_name ??
-      row.fullName;
-    const password = row.password ?? row.pass ?? row.pwd ?? null;
-    const privilege = row.privilege ?? row.priv ?? row.role ?? null;
-    const finger = row.finger ?? row.fingerPrint ?? row.fingerprint ?? null;
-    const face = row.face ?? null;
-    const rfid = row.rfid ?? row.card ?? row.card_id ?? row.cardId ?? null;
-    const vein = row.vein ?? null;
-    const template = row.template ?? row.templateData ?? null;
-
-    const existing = await prisma.userInfo.findUnique({
-      where: { pin: String(pin) },
-    });
-
+  for (const { pin, name } of rows) {
+    const existing = await prisma.userInfo.findUnique({ where: { pin } });
     if (existing) {
-      await prisma.userInfo.update({
-        where: { pin: String(pin) },
-        data: {
-          name: name ? String(name) : existing.name,
-          password: password ? String(password) : existing.password,
-          privilege: privilege != null ? Number(privilege) : existing.privilege,
-          finger: finger != null ? Number(finger) : existing.finger,
-          face: face != null ? Number(face) : existing.face,
-          rfid: rfid != null ? Number(rfid) : existing.rfid,
-          vein: vein != null ? Number(vein) : existing.vein,
-          template: template ? String(template) : existing.template,
-          deviceCloudId: cloudId,
-          rawPayload: row as any,
-        },
-      });
-      updated++;
+      if (name && existing.name === "Unknown") {
+        await prisma.userInfo.update({
+          where: { pin },
+          data: { name, deviceCloudId: cloudId },
+        });
+        updated++;
+      }
     } else {
       await prisma.userInfo.create({
         data: {
-          pin: String(pin),
-          name: name ? String(name) : "Unknown",
-          password: password ? String(password) : null,
-          privilege: privilege != null ? Number(privilege) : 1,
-          finger: finger != null ? Number(finger) : 0,
-          face: face != null ? Number(face) : 0,
-          rfid: rfid != null ? Number(rfid) : 0,
-          vein: vein != null ? Number(vein) : 0,
-          template: template ? String(template) : null,
+          pin,
+          name: name || `User ${pin}`,
+          privilege: 1,
+          finger: 0,
+          face: 0,
+          rfid: 0,
+          vein: 0,
           deviceCloudId: cloudId,
-          rawPayload: row as any,
         },
       });
       created++;
     }
   }
-
-  return { created, updated, skipped };
+  return { created, updated };
 }
 
 async function upsertAttendanceFromGetAttlogRows(cloudId: string, rows: any[]) {
   const normalizedRows = rows.flatMap((row) => extractAttlogRows(row));
-  // Catatan: "jangan dobel" => dedupe pakai kombinasi seperti webhook.
-  // Jika ingin benar-benar tidak dobel, kita cari existing sebelum create.
-  // (Tanpa schema unique constraint, ini satu-satunya cara dengan prisma yang ada sekarang.)
   const summary = {
     totalRows: normalizedRows.length,
     skippedNoPinOrScan: 0,
@@ -182,11 +82,6 @@ async function upsertAttendanceFromGetAttlogRows(cloudId: string, rows: any[]) {
         continue;
       }
 
-      // Dedupe untuk get_attlog dibuat lebih longgar.
-      // Untuk kasus kamu: payload get_attlog sudah punya `status_scan` konsisten,
-      // tapi masalah "SUCCESS tapi tidak tersimpan" sering karena dedupe terlalu ketat.
-      // Jadi cukup dedupe pakai: employeePin + deviceCloudId + scanTime.
-
       const statusScanNum = statusScan != null ? Number(statusScan) : null;
 
       const existing = await prisma.attendanceLog.findFirst({
@@ -220,78 +115,102 @@ async function upsertAttendanceFromGetAttlogRows(cloudId: string, rows: any[]) {
       summary.errors++;
       if (summary.sampleSkipped.length < 5)
         summary.sampleSkipped.push({ error: String(e), row });
-      // lanjut proses row berikutnya
     }
   }
 
   return summary;
 }
 
+async function extractPinsFromAttlog(cloudId: string): Promise<string[]> {
+  const now = new Date();
+  const pinSet = new Set<string>();
+
+  for (let i = 0; i < 30; i += 2) {
+    const start = new Date(now);
+    start.setDate(start.getDate() - i - 2);
+    const end = new Date(now);
+    end.setDate(end.getDate() - i);
+
+    const fmt = (d: Date) => d.toISOString().slice(0, 10);
+    const res = await fingerspot.getAttlog(fmt(start), fmt(end));
+    if (res?.success && res.data) {
+      let rows: any[] = [];
+      if (Array.isArray(res.data)) rows = res.data;
+      else if (res.data && Array.isArray((res.data as any).data)) rows = (res.data as any).data;
+
+      for (const row of rows) {
+        const pin = row?.pin ?? row?.employee_pin ?? row?.employeePin;
+        if (pin != null) pinSet.add(String(pin));
+      }
+    }
+  }
+
+  return Array.from(pinSet);
+}
+
+async function syncUsersFromAttlog(cloudId: string) {
+  const pins = await extractPinsFromAttlog(cloudId);
+  if (!pins.length) return { pinsFound: 0, usersCreated: 0, usersUpdated: 0, note: "Tidak ada data absensi ditemukan" };
+
+  await prisma.pinList.deleteMany({ where: { deviceCloudId: cloudId } });
+  for (const pin of pins) {
+    await prisma.pinList.create({
+      data: { deviceCloudId: cloudId, pin, total: pins.length },
+    });
+  }
+
+  const userRows = pins.map((pin) => ({ pin, name: `User ${pin}` }));
+  const userResult = await upsertUserInfoBatch(cloudId, userRows);
+
+  return {
+    pinsFound: pins.length,
+    usersCreated: userResult.created,
+    usersUpdated: userResult.updated,
+  };
+}
+
+async function fetchAndSaveAttlog(cloudId: string, startDate: string, endDate: string) {
+  const result = await fingerspot.getAttlog(startDate, endDate);
+  if (result?.success !== true) return result;
+
+  let rows: any[] = [];
+  if (Array.isArray(result.data)) rows = result.data;
+  else if (result.data && Array.isArray((result.data as any).data)) rows = (result.data as any).data;
+
+  if (rows.length > 0) {
+    const summary = await upsertAttendanceFromGetAttlogRows(cloudId, rows);
+    (result as any).__attlogUpsertSummary = summary;
+    (result as any).attlog_created = summary.created;
+    (result as any).attlog_dedupedExisting = summary.dedupedExisting;
+    (result as any).attlog_skippedNoPinOrScan = summary.skippedNoPinOrScan;
+    (result as any).attlog_skippedInvalidScanTime = summary.skippedInvalidScanTime;
+    (result as any).attlog_errors = summary.errors;
+  }
+
+  return result;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { command, cloudId, params } = body;
+    const targetCloudId = cloudId ?? body?.cloudId ?? process.env.FINGERSPOT_CLOUD_ID ?? "";
 
     const startTime = Date.now();
-    let result;
+    let result: any;
 
     switch (command) {
-      // Attendance
-      case "get_attlog": {
-        result = await fingerspot.getAttlog(params.startDate, params.endDate);
 
-        // Sinkron sinkron: jika success, langsung insert ke attendance_logs
-        // Tidak double: gunakan dedupe seperti webhook.
-        if (result?.success === true) {
-          // Fingerspot developer responses may be either:
-          // - result.data = [ { ... }, ... ]
-          // - result.data = { data: [ { ... }, ... ], trans_id }
-          let rows: any[] = [];
-          if (Array.isArray(result.data)) {
-            rows = result.data;
-          } else if (result.data && Array.isArray((result.data as any).data)) {
-            rows = (result.data as any).data;
-          }
-
-          if (rows.length > 0) {
-            const targetCloudId =
-              cloudId ?? body?.cloudId ?? process.env.FINGERSPOT_CLOUD_ID ?? "";
-
-            const summary = await upsertAttendanceFromGetAttlogRows(
-              String(targetCloudId),
-              rows,
-            );
-
-            (result as any).__attlogUpsertSummary = summary;
-
-            // Ringkasan level atas (supaya gampang kelihatan di UI).
-            (result as any).attlog_created = summary.created;
-            (result as any).attlog_dedupedExisting = summary.dedupedExisting;
-            (result as any).attlog_skippedNoPinOrScan =
-              summary.skippedNoPinOrScan;
-            (result as any).attlog_skippedInvalidScanTime =
-              summary.skippedInvalidScanTime;
-            (result as any).attlog_errors = summary.errors;
-          }
-        }
+      case "get_attlog":
+        result = await fetchAndSaveAttlog(
+          String(targetCloudId),
+          params.startDate,
+          params.endDate,
+        );
         break;
-      }
 
-      // User Management
       case "get_userinfo": {
         result = await fingerspot.getUserInfo(params.pin, params.transId);
-        if (result?.success === true) {
-          const targetCloudId =
-            cloudId ?? body?.cloudId ?? process.env.FINGERSPOT_CLOUD_ID ?? "";
-          const userSummary = await upsertUserInfoFromApiPayload(
-            String(targetCloudId),
-            result.data,
-          );
-          (result as any).__userinfoUpsertSummary = userSummary;
-          (result as any).userinfo_created = userSummary.created;
-          (result as any).userinfo_updated = userSummary.updated;
-          (result as any).userinfo_skipped = userSummary.skipped;
-        }
         break;
       }
       case "set_userinfo":
@@ -300,58 +219,39 @@ export async function POST(request: NextRequest) {
       case "delete_userinfo":
         result = await fingerspot.deleteUserInfo(params.pin);
         break;
-      case "get_all_pin":
+
+      case "get_all_pin": {
         result = await fingerspot.getAllPin(params.transId);
-        // If API returns pins directly, persist them immediately.
-        try {
-          const data = result?.data ?? null;
-          const { extractPinArray } = await import("@/lib/fingerspot-payload");
-          const pins = extractPinArray(data);
-          if (pins.length > 0) {
-            // use cloudId from request or env
-            const targetCloudId =
-              cloudId ?? body?.cloudId ?? process.env.FINGERSPOT_CLOUD_ID ?? "";
-            // replace existing list for that cloud
-            await prisma.pinList.deleteMany({
-              where: { deviceCloudId: String(targetCloudId) },
-            });
-            for (const p of pins) {
-              await prisma.pinList.create({
-                data: {
-                  deviceCloudId: String(targetCloudId),
-                  pin: String(p),
-                  total: pins.length,
-                  rawPayload: data as any,
-                },
-              });
-            }
-            // Also try to fetch userinfo for each pin immediately and upsert
-            try {
-              for (const p of pins) {
-                const userRes = await fingerspot.getUserInfo(String(p));
-                if (userRes?.success) {
-                  await upsertUserInfoFromApiPayload(
-                    String(targetCloudId),
-                    userRes.data,
-                  );
-                }
-              }
-            } catch (e) {
-              console.error("[API][get_all_pin] fetching userinfo failed", e);
-            }
-          }
-        } catch (e) {
-          console.error("[API][get_all_pin] Persist pin list failed", e);
-        }
+
+        const syncSummary = await syncUsersFromAttlog(String(targetCloudId));
+        result = {
+          ...result,
+          sync_note: "Perintah dikirim ke mesin. Data akan datang via webhook.",
+          pin_sync: syncSummary,
+        };
         break;
+      }
+
+      case "sync_users": {
+        const syncSummary = await syncUsersFromAttlog(String(targetCloudId));
+
+        await fingerspot.getAllPin(Date.now().toString());
+
+        result = {
+          success: true,
+          message: "Sinkronisasi user selesai",
+          sync: syncSummary,
+          note: syncSummary.pinsFound === 0
+            ? "Tidak ada data absensi. Coba sinkron dari mesin (get_all_pin)."
+            : `${syncSummary.pinsFound} PIN ditemukan dari data absensi. ${syncSummary.usersCreated} user baru dibuat. Detail user akan datang via webhook.`,
+        };
+        break;
+      }
+
       case "reg_online":
-        result = await fingerspot.registerOnline(
-          params.pin,
-          params.verification,
-        );
+        result = await fingerspot.registerOnline(params.pin, params.verification);
         break;
 
-      // Device Management
       case "get_device":
         result = await fingerspot.getDevice(params.transId);
         break;
@@ -362,7 +262,6 @@ export async function POST(request: NextRequest) {
         result = await fingerspot.restartDevice(params.transId);
         break;
 
-      // QR Code (VIDA Series)
       case "set_qrcode":
         result = await fingerspot.setQrCode(params.pin, params.qrString);
         break;
@@ -382,23 +281,17 @@ export async function POST(request: NextRequest) {
     await prisma.apiLog.create({
       data: {
         command,
-        deviceCloudId: cloudId || process.env.FINGERSPOT_CLOUD_ID || "",
+        deviceCloudId: String(targetCloudId),
         transId: params?.transId || null,
-        status: result.success ? "SUCCESS" : "FAILED",
+        status: result?.success ? "SUCCESS" : "FAILED",
         requestPayload: body as any,
-        // Simpan juga summary debug jika ada, supaya bisa dilihat di api_logs.
-        responsePayload: {
-          ...(result.data || {}),
-          ...((result as any).__attlogUpsertSummary
-            ? { __attlogUpsertSummary: (result as any).__attlogUpsertSummary }
-            : {}),
-        },
-        errorMessage: result.error || null,
+        responsePayload: result as any,
+        errorMessage: result?.error || null,
         duration,
       },
     });
 
-    return NextResponse.json(result);
+    return NextResponse.json(result || { success: false, error: "No result" });
   } catch (error) {
     console.error("[API] Error:", error);
     return NextResponse.json(

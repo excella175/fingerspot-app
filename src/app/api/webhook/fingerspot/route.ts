@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import * as fingerspot from "@/lib/fingerspot";
 import { extractAttlogRows, parseScanTime } from "@/lib/fingerspot-payload";
 
 interface WebhookPayload {
@@ -11,7 +12,7 @@ interface WebhookPayload {
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
-  let body: WebhookPayload | null = null;
+  let body: any = null;
 
   try {
     // Verifikasi webhook secret dari header saat secret nyata dipakai.
@@ -26,7 +27,8 @@ export async function POST(request: NextRequest) {
     if (webhookSecret && !isPlaceholderSecret) {
       const authHeader =
         request.headers.get("authorization") ||
-        request.headers.get("x-webhook-secret");
+        request.headers.get("x-webhook-secret") ||
+        request.headers.get("x-fingerspot-secret");
       if (
         authHeader !== webhookSecret &&
         authHeader !== `Bearer ${webhookSecret}`
@@ -36,14 +38,32 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    body = await request.json();
-    if (!body) {
-      return NextResponse.json({ status: "error" }, { status: 400 });
+    const rawText = await request.text();
+    try {
+      body = rawText ? JSON.parse(rawText) : null;
+    } catch (e) {
+      // fallback: try NextRequest.json (if stream already used) or treat as raw text
+      try {
+        body = await request.json();
+      } catch {
+        body = rawText;
+      }
     }
-    const { type, cloud_id, trans_id, data } = body;
+
+    if (!body) {
+      console.warn("[Webhook] Empty body received");
+      return NextResponse.json({ status: "error", reason: "empty body" }, { status: 400 });
+    }
+
+    // support both snake_case and camelCase from device
+    const type = body.type ?? body.event ?? null;
+    const cloud_id = body.cloud_id ?? body.cloudId ?? body.device_cloud_id ?? body.deviceCloudId ?? (body.data && (body.data.cloud_id ?? body.data.cloudId)) ?? null;
+    const trans_id = body.trans_id ?? body.transId ?? null;
+    // prefer nested data, but fallback to payload/body itself
+    const data = body.data ?? body.payload ?? body;
 
     console.log("[Webhook] Received:", type, cloud_id);
-    console.log("[Webhook] Raw body:", JSON.stringify(body, null, 2));
+    console.log("[Webhook] Raw body:", rawText.substring(0, 2000));
 
     // Fingerspot callback mengikuti bentuk:
     // { type, cloud_id, trans_id, data: {...} }
@@ -53,13 +73,33 @@ export async function POST(request: NextRequest) {
         ? (data as any).data
         : data;
 
+    // build headers object (safe) and persist raw payload + headers
+    let headersObj: Record<string, string> = {};
+    try {
+      headersObj = Object.fromEntries(request.headers as any) as Record<string, string>;
+    } catch (e) {
+      try {
+        for (const [k, v] of request.headers) {
+          headersObj[String(k)] = String(v);
+        }
+      } catch {
+        headersObj = {};
+      }
+    }
+
+    console.log("[Webhook] Headers:", headersObj);
+
+    let savedPayload: any = (body as any) ?? { raw: rawText };
+    if (typeof savedPayload === "string") savedPayload = { raw: savedPayload };
+    savedPayload._headers = headersObj;
+
     await prisma.webhookLog.create({
       data: {
-        type,
-        deviceCloudId: cloud_id,
+        type: String(type ?? "unknown"),
+        deviceCloudId: String(cloud_id ?? body.cloudId ?? body.cloud_id ?? "unknown"),
         transId: trans_id?.toString() || null,
         status: "SUCCESS",
-        payload: body as any,
+        payload: savedPayload,
       },
     });
 
@@ -106,7 +146,11 @@ export async function POST(request: NextRequest) {
           normalizedData && typeof normalizedData === "object"
             ? normalizedData
             : data;
-        await handleUserinfo(cloud_id, userData);
+        try {
+          await handleUserinfo(cloud_id ?? (body.cloudId ?? body.cloud_id), userData);
+        } catch (e) {
+          console.error("[Webhook][userinfo] handler failed", e);
+        }
         break;
       }
       case "get_userid_list": {
@@ -114,7 +158,20 @@ export async function POST(request: NextRequest) {
           normalizedData && typeof normalizedData === "object"
             ? normalizedData
             : data;
-        await handlePinList(cloud_id, pinData);
+        const resolvedCloudId = cloud_id ?? (body.cloudId ?? body.cloud_id) ?? "unknown";
+        try {
+          const pins = await handlePinList(resolvedCloudId, pinData);
+          if (pins.length > 0) {
+            console.log(`[Webhook][pinlist] ${pins.length} PINs saved, triggering get_userinfo for each`);
+            for (const pin of pins.slice(0, 50)) {
+              fingerspot.getUserInfo(String(pin), `webhook-auto-${Date.now()}`).catch((e) =>
+                console.error(`[Webhook] auto-getUserInfo(${pin}) failed:`, e)
+              );
+            }
+          }
+        } catch (e) {
+          console.error("[Webhook][pinlist] handler failed", e);
+        }
         break;
       }
       case "set_userinfo":
@@ -416,13 +473,12 @@ async function handleUserinfo(cloudId: string, data: Record<string, any>) {
   }
 }
 
-async function handlePinList(cloudId: string, data: Record<string, any>) {
-  // use robust extractor to support nested shapes
+async function handlePinList(cloudId: string, data: Record<string, any>): Promise<string[]> {
   const { extractPinArray } = await import("@/lib/fingerspot-payload");
   const pinArr = extractPinArray(data);
   if (!pinArr.length) {
     console.log("[Webhook][pinlist] No pin array found", { cloudId, data });
-    return;
+    return [];
   }
 
   await prisma.pinList.deleteMany({ where: { deviceCloudId: cloudId } });
@@ -437,4 +493,6 @@ async function handlePinList(cloudId: string, data: Record<string, any>) {
       },
     });
   }
+
+  return pinArr.map(String);
 }
