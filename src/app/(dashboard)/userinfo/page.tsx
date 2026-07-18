@@ -16,6 +16,12 @@ interface UserInfoEntry {
   createdAt: string;
 }
 
+interface PinItem {
+  pin: string;
+  name: string;
+  checked: boolean;
+}
+
 export default function UserinfoPage() {
   const [data, setData] = useState<UserInfoEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,6 +33,9 @@ export default function UserinfoPage() {
   const [editName, setEditName] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [pinPopupOpen, setPinPopupOpen] = useState(false);
+  const [pinList, setPinList] = useState<PinItem[]>([]);
+  const [findingPins, setFindingPins] = useState(false);
   const limit = 50;
 
   const fetchData = () => {
@@ -50,32 +59,6 @@ export default function UserinfoPage() {
   useEffect(() => {
     fetchData();
   }, [page]);
-
-  const handleSync = async () => {
-    setSyncing(true);
-    try {
-      const res = await fetch("/api/fingerspot", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ command: "sync_users", params: {} }),
-      });
-      const result = await res.json();
-      if (result.success && result.sync) {
-        const msg =
-          `✅ Sinkron selesai!\n` +
-          `PIN ditemukan: ${result.sync.pinsFound}\n` +
-          `User baru: ${result.sync.usersCreated}\n` +
-          (result.note ? `\n${result.note}` : "");
-        alert(msg);
-        fetchData();
-      } else {
-        alert("❌ Gagal: " + (result.error || "Unknown error"));
-      }
-    } catch {
-      alert("❌ Gagal mengirim perintah");
-    }
-    setSyncing(false);
-  };
 
   const handleEdit = async () => {
     if (!editPin || !editName.trim()) return;
@@ -116,6 +99,70 @@ export default function UserinfoPage() {
     setDeleting(null);
   };
 
+  const handleFindPins = async () => {
+    setFindingPins(true);
+    try {
+      const res = await fetch("/api/fingerspot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ command: "find_pins", params: {} }),
+      });
+      const result = await res.json();
+      if (result.success && result.pins) {
+        const existing = await fetch("/api/userinfo?limit=9999").then(r => r.json());
+        const existingPins = new Set((existing.data || []).map((u: UserInfoEntry) => u.pin));
+
+        const items: PinItem[] = result.pins.map((p: string) => ({
+          pin: p,
+          name: "",
+          checked: !existingPins.has(p),
+        }));
+        setPinList(items);
+        setPinPopupOpen(true);
+      } else {
+        alert("❌ Gagal: " + (result.error || "Tidak ada PIN ditemukan"));
+      }
+    } catch {
+      alert("❌ Gagal mencari PIN");
+    }
+    setFindingPins(false);
+  };
+
+  const handleSaveSelectedPins = async () => {
+    const selected = pinList.filter(p => p.checked);
+    if (selected.length === 0) {
+      alert("Pilih minimal 1 PIN untuk disimpan");
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch("/api/fingerspot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          command: "save_selected_pins",
+          params: {},
+          pins: selected.map(p => ({ pin: p.pin, name: p.name || `User ${p.pin}` })),
+        }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        alert(`✅ ${result.usersCreated} user baru, ${result.usersUpdated} diupdate dari ${result.totalPins} PIN`);
+        setPinPopupOpen(false);
+        fetchData();
+      } else {
+        alert("❌ Gagal: " + (result.error || "Unknown error"));
+      }
+    } catch {
+      alert("❌ Gagal menyimpan");
+    }
+    setSaving(false);
+  };
+
+  const toggleAll = (checked: boolean) => {
+    setPinList(prev => prev.map(p => ({ ...p, checked })));
+  };
+
   const totalPages = Math.ceil(total / limit);
 
   const getPrivilegeLabel = (p: number) => {
@@ -153,22 +200,19 @@ export default function UserinfoPage() {
             />
           </div>
           <button
-            onClick={() => {
-              setPage(1);
-              fetchData();
-            }}
+            onClick={() => { setPage(1); fetchData(); }}
             className="inline-flex items-center gap-2 rounded-xl bg-gray-100 px-4 py-2 text-[13px] font-medium text-gray-600 hover:bg-gray-200 transition-colors"
           >
             <Search className="h-4 w-4" />
             Cari
           </button>
           <button
-            onClick={handleSync}
-            disabled={syncing}
+            onClick={handleFindPins}
+            disabled={findingPins}
             className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-[13px] font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm shadow-blue-200"
           >
-            <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
-            {syncing ? "Mengirim..." : "Sinkron dari Mesin"}
+            <RefreshCw className={`h-4 w-4 ${findingPins ? "animate-spin" : ""}`} />
+            {findingPins ? "Mencari..." : "Cari PIN dari Mesin"}
           </button>
         </div>
       </div>
@@ -201,7 +245,7 @@ export default function UserinfoPage() {
               ) : data.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-4 py-12 text-center text-gray-300">
-                    Tidak ada data. Klik &quot;Sinkron dari Mesin&quot; untuk mengambil data.
+                    Tidak ada data. Klik &quot;Cari PIN dari Mesin&quot; untuk mengambil data.
                   </td>
                 </tr>
               ) : (
@@ -316,6 +360,79 @@ export default function UserinfoPage() {
                 className="rounded-xl bg-blue-600 px-4 py-2 text-[13px] font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
               >
                 {saving ? "Menyimpan..." : "Simpan"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pinPopupOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setPinPopupOpen(false)}>
+          <div className="w-full max-w-lg max-h-[80vh] rounded-2xl bg-white p-6 shadow-xl flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-bold text-gray-900">
+                Pilih PIN untuk Disimpan ({pinList.length} ditemukan)
+              </h3>
+              <button onClick={() => setPinPopupOpen(false)} className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="flex items-center gap-3 mb-3 text-[13px]">
+              <label className="flex items-center gap-1.5 cursor-pointer text-gray-500 hover:text-gray-700">
+                <input type="checkbox" checked={pinList.every(p => p.checked)} onChange={(e) => toggleAll(e.target.checked)} className="rounded" />
+                Pilih Semua
+              </label>
+              <span className="text-gray-300">|</span>
+              <span className="text-gray-400">Centang PIN yang ingin disimpan ke database</span>
+            </div>
+            <div className="overflow-y-auto flex-1 border border-gray-100 rounded-xl">
+              <table className="w-full text-left text-[13px]">
+                <thead>
+                  <tr className="border-b border-gray-100 bg-gray-50/50">
+                    <th className="w-10 px-3 py-2"></th>
+                    <th className="px-3 py-2 font-medium text-gray-400">PIN</th>
+                    <th className="px-3 py-2 font-medium text-gray-400">Nama</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {pinList.map((item) => (
+                    <tr key={item.pin} className="hover:bg-gray-50/50">
+                      <td className="px-3 py-2 text-center">
+                        <input
+                          type="checkbox"
+                          checked={item.checked}
+                          onChange={() => setPinList(prev => prev.map(p => p.pin === item.pin ? { ...p, checked: !p.checked } : p))}
+                          className="rounded"
+                        />
+                      </td>
+                      <td className="px-3 py-2 font-mono text-gray-700">{item.pin}</td>
+                      <td className="px-3 py-2">
+                        <input
+                          type="text"
+                          value={item.name}
+                          onChange={(e) => setPinList(prev => prev.map(p => p.pin === item.pin ? { ...p, name: e.target.value } : p))}
+                          placeholder={`User ${item.pin}`}
+                          className="w-full rounded-lg border border-gray-200 px-2 py-1 text-[13px] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex gap-2 justify-end mt-4 pt-3 border-t border-gray-100">
+              <button
+                onClick={() => setPinPopupOpen(false)}
+                className="rounded-xl border border-gray-200 px-4 py-2 text-[13px] font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleSaveSelectedPins}
+                disabled={saving || pinList.filter(p => p.checked).length === 0}
+                className="rounded-xl bg-blue-600 px-4 py-2 text-[13px] font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              >
+                {saving ? "Menyimpan..." : `Simpan ${pinList.filter(p => p.checked).length} PIN`}
               </button>
             </div>
           </div>

@@ -39,59 +39,31 @@ export async function POST(request: NextRequest) {
     }
 
     const rawText = await request.text();
-    try {
-      body = rawText ? JSON.parse(rawText) : null;
-    } catch (e) {
-      // fallback: try NextRequest.json (if stream already used) or treat as raw text
-      try {
-        body = await request.json();
-      } catch {
-        body = rawText;
-      }
-    }
-
-    if (!body) {
+    if (!rawText) {
       console.warn("[Webhook] Empty body received");
       return NextResponse.json({ status: "error", reason: "empty body" }, { status: 400 });
     }
 
-    // support both snake_case and camelCase from device
+    try {
+      body = JSON.parse(rawText);
+    } catch {
+      body = { raw: rawText };
+    }
+
     const type = body.type ?? body.event ?? null;
     const cloud_id = body.cloud_id ?? body.cloudId ?? body.device_cloud_id ?? body.deviceCloudId ?? (body.data && (body.data.cloud_id ?? body.data.cloudId)) ?? null;
     const trans_id = body.trans_id ?? body.transId ?? null;
-    // prefer nested data, but fallback to payload/body itself
     const data = body.data ?? body.payload ?? body;
 
-    console.log("[Webhook] Received:", type, cloud_id);
-    console.log("[Webhook] Raw body:", rawText.substring(0, 2000));
+    console.log("[Webhook] Received type:", type, "cloud_id:", cloud_id);
+    console.log("[Webhook] Raw body:", rawText.substring(0, 1000));
 
-    // Fingerspot callback mengikuti bentuk:
-    // { type, cloud_id, trans_id, data: {...} }
-    // Di beberapa kasus payload sebenarnya ada di body.data.data, jadi kita normalisasi dengan aman.
     const normalizedData =
       data && typeof data === "object" && "data" in (data as any)
         ? (data as any).data
         : data;
 
-    // build headers object (safe) and persist raw payload + headers
-    let headersObj: Record<string, string> = {};
-    try {
-      headersObj = Object.fromEntries(request.headers as any) as Record<string, string>;
-    } catch (e) {
-      try {
-        for (const [k, v] of request.headers) {
-          headersObj[String(k)] = String(v);
-        }
-      } catch {
-        headersObj = {};
-      }
-    }
-
-    console.log("[Webhook] Headers:", headersObj);
-
-    let savedPayload: any = (body as any) ?? { raw: rawText };
-    if (typeof savedPayload === "string") savedPayload = { raw: savedPayload };
-    savedPayload._headers = headersObj;
+    const rawPayload = typeof body === "object" ? body : { raw: rawText };
 
     await prisma.webhookLog.create({
       data: {
@@ -99,7 +71,7 @@ export async function POST(request: NextRequest) {
         deviceCloudId: String(cloud_id ?? body.cloudId ?? body.cloud_id ?? "unknown"),
         transId: trans_id?.toString() || null,
         status: "SUCCESS",
-        payload: savedPayload,
+        payload: rawPayload as any,
       },
     });
 

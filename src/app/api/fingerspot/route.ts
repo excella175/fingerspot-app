@@ -234,32 +234,75 @@ export async function POST(request: NextRequest) {
 
       case "sync_users": {
         const syncSummary = await syncUsersFromAttlog(String(targetCloudId));
-
-        await fingerspot.getAllPin(Date.now().toString());
-
-        if (syncSummary.pinsFound > 0) {
-          const fireAndForget = async () => {
-            const pins = await prisma.pinList.findMany({
-              where: { deviceCloudId: String(targetCloudId) },
-              orderBy: { createdAt: "desc" },
-              take: 50,
-            });
-            for (const p of pins) {
-              try {
-                await fingerspot.getUserInfo(p.pin, `sync-${Date.now()}`);
-              } catch {}
-            }
-          };
-          fireAndForget();
-        }
-
         result = {
           success: true,
           message: "Sinkronisasi user selesai",
           sync: syncSummary,
           note: syncSummary.pinsFound === 0
-            ? "Tidak ada data absensi. Coba sinkron dari mesin (get_all_pin)."
-            : `${syncSummary.pinsFound} PIN ditemukan dari data absensi. ${syncSummary.usersCreated} user baru dibuat. Mengirim permintaan detail user ke mesin...`,
+            ? "Tidak ada data absensi ditemukan."
+            : `${syncSummary.pinsFound} PIN ditemukan dari data absensi. ${syncSummary.usersCreated} user baru dibuat.`,
+        };
+        break;
+      }
+
+      case "find_pins": {
+        const pins = await extractPinsFromAttlog(String(targetCloudId));
+        result = {
+          success: true,
+          pins,
+          total: pins.length,
+          message: pins.length > 0
+            ? `${pins.length} PIN ditemukan dari data absensi 30 hari terakhir`
+            : "Tidak ada PIN ditemukan. Pastikan mesin sudah merekam absensi.",
+        };
+        break;
+      }
+
+      case "save_selected_pins": {
+        const { pins: selectedPins } = body;
+        if (!selectedPins || !Array.isArray(selectedPins) || selectedPins.length === 0) {
+          return NextResponse.json({ success: false, error: "Pilih minimal 1 PIN" }, { status: 400 });
+        }
+        const userRows = selectedPins.map((p: any) => ({
+          pin: String(p.pin ?? p),
+          name: p.name ? String(p.name) : `User ${p.pin ?? p}`,
+        }));
+        const userResult = await upsertUserInfoBatch(String(targetCloudId), userRows);
+        result = {
+          success: true,
+          usersCreated: userResult.created,
+          usersUpdated: userResult.updated,
+          totalPins: selectedPins.length,
+        };
+        break;
+      }
+
+      case "try_fetch_userinfo": {
+        const { pins: fetchPins } = body;
+        if (!fetchPins || !Array.isArray(fetchPins) || fetchPins.length === 0) {
+          return NextResponse.json({ success: false, error: "Tidak ada PIN" }, { status: 400 });
+        }
+        const results: { pin: string; name?: string; ack: boolean; error?: string }[] = [];
+        for (const rawPin of fetchPins) {
+          const pin = String(rawPin.pin ?? rawPin);
+          try {
+            const res = await fingerspot.getUserInfo(pin, `fetch-${Date.now()}`);
+            if (res.success && res.data && res.data.data && res.data.data.name) {
+              results.push({ pin, name: res.data.data.name, ack: false });
+            } else if (res.success && res.data && res.data.name) {
+              results.push({ pin, name: res.data.name, ack: false });
+            } else {
+              results.push({ pin, ack: true, error: res.data?.message || "ACK (webhook expected)" });
+            }
+          } catch (e) {
+            results.push({ pin, ack: true, error: String(e) });
+          }
+        }
+        result = {
+          success: true,
+          results,
+          gotNames: results.filter(r => r.name).length,
+          ackOnly: results.filter(r => r.ack).length,
         };
         break;
       }
