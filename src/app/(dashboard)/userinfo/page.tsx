@@ -36,6 +36,9 @@ export default function UserinfoPage() {
   const [pinPopupOpen, setPinPopupOpen] = useState(false);
   const [pinList, setPinList] = useState<PinItem[]>([]);
   const [findingPins, setFindingPins] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [fetchingNames, setFetchingNames] = useState(false);
+  const [appUrl, setAppUrl] = useState("");
   const limit = 50;
 
   const fetchData = () => {
@@ -58,6 +61,7 @@ export default function UserinfoPage() {
 
   useEffect(() => {
     fetchData();
+    setAppUrl(window.location.origin);
   }, [page]);
 
   const handleEdit = async () => {
@@ -112,10 +116,10 @@ export default function UserinfoPage() {
         const existing = await fetch("/api/userinfo?limit=9999").then(r => r.json());
         const existingPins = new Set((existing.data || []).map((u: UserInfoEntry) => u.pin));
 
-        const items: PinItem[] = result.pins.map((p: string) => ({
-          pin: p,
-          name: "",
-          checked: !existingPins.has(p),
+        const items: PinItem[] = result.pins.map((p: any) => ({
+          pin: String(p.pin ?? p),
+          name: p.name || "",
+          checked: !existingPins.has(String(p.pin ?? p)),
         }));
         setPinList(items);
         setPinPopupOpen(true);
@@ -214,7 +218,77 @@ export default function UserinfoPage() {
             <RefreshCw className={`h-4 w-4 ${findingPins ? "animate-spin" : ""}`} />
             {findingPins ? "Mencari..." : "Cari PIN dari Mesin"}
           </button>
+          <button
+            onClick={async () => {
+              setRefreshing(true);
+              try {
+                const res = await fetch("/api/fingerspot", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ command: "refresh_names", params: {} }),
+                });
+                const r = await res.json();
+                alert(r.message || (r.success ? "OK" : "Gagal"));
+              } catch {
+                alert("Gagal");
+              }
+              setRefreshing(false);
+            }}
+            disabled={refreshing}
+            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-[13px] font-medium text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors shadow-sm shadow-emerald-200"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+            {refreshing ? "Mengirim..." : "Refresh Nama via Webhook"}
+          </button>
+          <button
+            onClick={async () => {
+              setFetchingNames(true);
+              const unnamed = data.filter(u => u.name.startsWith("User ")).map(u => u.pin);
+              if (unnamed.length === 0) { alert("Semua user sudah punya nama"); setFetchingNames(false); return; }
+              try {
+                const res = await fetch("/api/fingerspot", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ command: "try_fetch_userinfo", pins: unnamed }),
+                });
+                const r = await res.json();
+                if (r.success) {
+                  let msg = `${r.gotNames} nama didapat, ${r.ackOnly} masih ACK (via webhook)`;
+                  if (r.gotNames > 0) {
+                    // update names in DB
+                    for (const item of r.results) {
+                      if (item.name) {
+                        await fetch("/api/userinfo", {
+                          method: "PUT",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ pin: item.pin, name: item.name }),
+                        });
+                      }
+                    }
+                    msg += ". Nama sudah disimpan!";
+                    fetchData();
+                  }
+                  alert(msg);
+                } else {
+                  alert("Gagal: " + (r.error || "Unknown"));
+                }
+              } catch { alert("Gagal"); }
+              setFetchingNames(false);
+            }}
+            disabled={fetchingNames || data.filter(u => u.name.startsWith("User ")).length === 0}
+            className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-[13px] font-medium text-white hover:bg-amber-700 disabled:opacity-50 transition-colors shadow-sm shadow-amber-200"
+          >
+            <RefreshCw className={`h-4 w-4 ${fetchingNames ? "animate-spin" : ""}`} />
+            {fetchingNames ? "Memuat..." : "Ambil Nama Langsung"}
+          </button>
         </div>
+      </div>
+
+      <div className="rounded-2xl border border-blue-100 bg-blue-50 p-3 text-[12px] text-blue-700 leading-relaxed">
+        <strong>Info:</strong> Nama user otomatis terisi saat mesin mengirim callback webhook.
+        Pastikan Webhook URL di <code className="bg-blue-100 px-1 rounded">developer.fingerspot.io</code> → Device → Detail sudah diisi:
+        <code className="bg-blue-100 px-1 rounded block mt-1 break-all">{appUrl || "https://..."}/api/webhook/fingerspot</code>
+        <br />Tombol <strong>"Ambil Nama Langsung"</strong> mencoba ambil data langsung dari API (berhasil tergantung tipe mesin).
       </div>
 
       <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">

@@ -247,10 +247,29 @@ export async function POST(request: NextRequest) {
 
       case "find_pins": {
         const pins = await extractPinsFromAttlog(String(targetCloudId));
+
+        const existingUsers = await prisma.userInfo.findMany({
+          where: { pin: { in: pins } },
+          select: { pin: true, name: true },
+        });
+        const nameMap = new Map(existingUsers.map(u => [u.pin, u.name]));
+
+        const namedPins = pins.map(pin => ({
+          pin,
+          name: nameMap.get(pin) || null,
+        }));
+
+        // Fire async commands so if webhook is configured, names will arrive
+        fingerspot.getAllPin(`find-${Date.now()}`).catch(() => {});
+        for (const pin of pins.slice(0, 30)) {
+          fingerspot.getUserInfo(pin, `find-${Date.now()}`).catch(() => {});
+        }
+
         result = {
           success: true,
-          pins,
+          pins: namedPins,
           total: pins.length,
+          gotNames: namedPins.filter(p => p.name).length,
           message: pins.length > 0
             ? `${pins.length} PIN ditemukan dari data absensi 30 hari terakhir`
             : "Tidak ada PIN ditemukan. Pastikan mesin sudah merekam absensi.",
@@ -268,6 +287,12 @@ export async function POST(request: NextRequest) {
           name: p.name ? String(p.name) : `User ${p.pin ?? p}`,
         }));
         const userResult = await upsertUserInfoBatch(String(targetCloudId), userRows);
+
+        // Fire get_userinfo so webhook callback can update names when it arrives
+        for (const row of userRows) {
+          fingerspot.getUserInfo(row.pin, `save-${Date.now()}`).catch(() => {});
+        }
+
         result = {
           success: true,
           usersCreated: userResult.created,
@@ -327,6 +352,26 @@ export async function POST(request: NextRequest) {
       case "get_qrcode":
         result = await fingerspot.getQrCode(params.pin);
         break;
+
+      case "refresh_names": {
+        const unnamedPins = await prisma.userInfo.findMany({
+          where: { name: { startsWith: "User " } },
+          select: { pin: true },
+          take: 50,
+        });
+        const pinList = unnamedPins.map(p => p.pin);
+        for (const pin of pinList) {
+          fingerspot.getUserInfo(pin, `refresh-${Date.now()}`).catch(() => {});
+        }
+        result = {
+          success: true,
+          sent: pinList.length,
+          message: pinList.length > 0
+            ? `Mengirim ${pinList.length} permintaan detail user ke mesin. Nama akan terisi otomatis lewat webhook.`
+            : "Semua user sudah memiliki nama.",
+        };
+        break;
+      }
 
       default:
         return NextResponse.json(
