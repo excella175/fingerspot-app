@@ -237,13 +237,29 @@ export async function POST(request: NextRequest) {
 
         await fingerspot.getAllPin(Date.now().toString());
 
+        if (syncSummary.pinsFound > 0) {
+          const fireAndForget = async () => {
+            const pins = await prisma.pinList.findMany({
+              where: { deviceCloudId: String(targetCloudId) },
+              orderBy: { createdAt: "desc" },
+              take: 50,
+            });
+            for (const p of pins) {
+              try {
+                await fingerspot.getUserInfo(p.pin, `sync-${Date.now()}`);
+              } catch {}
+            }
+          };
+          fireAndForget();
+        }
+
         result = {
           success: true,
           message: "Sinkronisasi user selesai",
           sync: syncSummary,
           note: syncSummary.pinsFound === 0
             ? "Tidak ada data absensi. Coba sinkron dari mesin (get_all_pin)."
-            : `${syncSummary.pinsFound} PIN ditemukan dari data absensi. ${syncSummary.usersCreated} user baru dibuat. Detail user akan datang via webhook.`,
+            : `${syncSummary.pinsFound} PIN ditemukan dari data absensi. ${syncSummary.usersCreated} user baru dibuat. Mengirim permintaan detail user ke mesin...`,
         };
         break;
       }

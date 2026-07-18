@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Search, RefreshCw, Users, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, RefreshCw, Users, ChevronLeft, ChevronRight, Pencil, Trash2, X } from "lucide-react";
 
 interface UserInfoEntry {
   id: string;
@@ -23,6 +23,10 @@ export default function UserinfoPage() {
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
   const [syncing, setSyncing] = useState(false);
+  const [editPin, setEditPin] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const limit = 50;
 
   const fetchData = () => {
@@ -71,6 +75,45 @@ export default function UserinfoPage() {
       alert("❌ Gagal mengirim perintah");
     }
     setSyncing(false);
+  };
+
+  const handleEdit = async () => {
+    if (!editPin || !editName.trim()) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/userinfo", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pin: editPin, name: editName.trim() }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        setEditPin(null);
+        fetchData();
+      } else {
+        alert("Gagal: " + (result.error || "Unknown error"));
+      }
+    } catch {
+      alert("Gagal menyimpan");
+    }
+    setSaving(false);
+  };
+
+  const handleDelete = async (pin: string) => {
+    if (!confirm(`Yakin ingin menghapus user PIN ${pin}?`)) return;
+    setDeleting(pin);
+    try {
+      const res = await fetch(`/api/userinfo?pin=${pin}`, { method: "DELETE" });
+      const result = await res.json();
+      if (result.success) {
+        fetchData();
+      } else {
+        alert("Gagal: " + (result.error || "Unknown error"));
+      }
+    } catch {
+      alert("Gagal menghapus");
+    }
+    setDeleting(null);
   };
 
   const totalPages = Math.ceil(total / limit);
@@ -142,12 +185,13 @@ export default function UserinfoPage() {
                 <th className="px-4 py-3 text-center font-medium text-gray-400">Face</th>
                 <th className="px-4 py-3 text-center font-medium text-gray-400">RFID</th>
                 <th className="px-4 py-3 font-medium text-gray-400">Device ID</th>
+                <th className="px-4 py-3 text-center font-medium text-gray-400">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-gray-300">
+                  <td colSpan={8} className="px-4 py-12 text-center text-gray-300">
                     <div className="flex items-center justify-center gap-2">
                       <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
                       Memuat...
@@ -156,7 +200,7 @@ export default function UserinfoPage() {
                 </tr>
               ) : data.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-gray-300">
+                  <td colSpan={8} className="px-4 py-12 text-center text-gray-300">
                     Tidak ada data. Klik &quot;Sinkron dari Mesin&quot; untuk mengambil data.
                   </td>
                 </tr>
@@ -181,6 +225,25 @@ export default function UserinfoPage() {
                     <td className="px-4 py-3 text-center text-gray-600">{row.rfid}</td>
                     <td className="px-4 py-3 font-mono text-[11px] text-gray-400">
                       {row.deviceCloudId || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          onClick={() => { setEditPin(row.pin); setEditName(row.name); }}
+                          className="rounded-lg p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                          title="Edit nama"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(row.pin)}
+                          disabled={deleting === row.pin}
+                          className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-30 transition-colors"
+                          title="Hapus user"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -215,6 +278,49 @@ export default function UserinfoPage() {
           </div>
         )}
       </div>
+
+      {editPin && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setEditPin(null)}>
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-bold text-gray-900">Edit Nama User</h3>
+              <button onClick={() => setEditPin(null)} className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="mb-1">
+              <label className="block text-[13px] font-medium text-gray-500">PIN</label>
+              <p className="mt-0.5 font-mono text-sm text-gray-900">{editPin}</p>
+            </div>
+            <div className="mb-5">
+              <label className="block text-[13px] font-medium text-gray-500">Nama</label>
+              <input
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleEdit()}
+                className="mt-1.5 block w-full rounded-xl border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                autoFocus
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setEditPin(null)}
+                className="rounded-xl border border-gray-200 px-4 py-2 text-[13px] font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleEdit}
+                disabled={saving || !editName.trim()}
+                className="rounded-xl bg-blue-600 px-4 py-2 text-[13px] font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              >
+                {saving ? "Menyimpan..." : "Simpan"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
