@@ -1,4 +1,5 @@
-const FINGERSPOT_API_URL = process.env.FINGERSPOT_API_URL || "https://developer.fingerspot.io/api";
+const FINGERSPOT_API_URL =
+  process.env.FINGERSPOT_API_URL || "https://developer.fingerspot.io/api";
 const FINGERSPOT_API_KEY = process.env.FINGERSPOT_API_KEY || "";
 const FINGERSPOT_CLOUD_ID = process.env.FINGERSPOT_CLOUD_ID || "";
 
@@ -12,7 +13,7 @@ export interface FingerspotResponse {
 
 async function callAPI(
   endpoint: string,
-  body: Record<string, any>
+  body: Record<string, any>,
 ): Promise<FingerspotResponse> {
   try {
     const response = await fetch(`${FINGERSPOT_API_URL}/${endpoint}`, {
@@ -72,8 +73,12 @@ export async function getAttlog(startDate: string, endDate: string) {
 // USER MANAGEMENT
 // ============================================
 
-export async function getUserInfo(pin: string, transId?: string) {
-  return callAPI("get_userinfo", { pin, trans_id: transId || Date.now().toString() });
+export async function getUserInfo(pin: string, name: string, transId?: string) {
+  return callAPI("get_userinfo", {
+    pin,
+    name,
+    trans_id: transId || Date.now().toString(),
+  });
 }
 
 export async function setUserInfo(userData: {
@@ -105,7 +110,11 @@ export async function getAllPin(transId?: string) {
 }
 
 export async function registerOnline(pin: string, verification: string = "0") {
-  return callAPI("reg_online", { trans_id: Date.now().toString(), pin, verification });
+  return callAPI("reg_online", {
+    trans_id: Date.now().toString(),
+    pin,
+    verification,
+  });
 }
 
 // ============================================
@@ -121,7 +130,9 @@ export async function setTime(timezone: string = "Asia/Jakarta") {
 }
 
 export async function restartDevice(transId?: string) {
-  return callAPI("restart_device", { trans_id: transId || Date.now().toString() });
+  return callAPI("restart_device", {
+    trans_id: transId || Date.now().toString(),
+  });
 }
 
 // ============================================

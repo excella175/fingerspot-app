@@ -3,7 +3,10 @@ import { prisma } from "@/lib/prisma";
 import * as fingerspot from "@/lib/fingerspot";
 import { extractAttlogRows, parseScanTime } from "@/lib/fingerspot-payload";
 
-async function upsertUserInfoBatch(cloudId: string, rows: { pin: string; name: string }[]) {
+async function upsertUserInfoBatch(
+  cloudId: string,
+  rows: { pin: string; name: string }[],
+) {
   let created = 0;
   let updated = 0;
 
@@ -136,7 +139,8 @@ async function extractPinsFromAttlog(cloudId: string): Promise<string[]> {
     if (res?.success && res.data) {
       let rows: any[] = [];
       if (Array.isArray(res.data)) rows = res.data;
-      else if (res.data && Array.isArray((res.data as any).data)) rows = (res.data as any).data;
+      else if (res.data && Array.isArray((res.data as any).data))
+        rows = (res.data as any).data;
 
       for (const row of rows) {
         const pin = row?.pin ?? row?.employee_pin ?? row?.employeePin;
@@ -150,7 +154,13 @@ async function extractPinsFromAttlog(cloudId: string): Promise<string[]> {
 
 async function syncUsersFromAttlog(cloudId: string) {
   const pins = await extractPinsFromAttlog(cloudId);
-  if (!pins.length) return { pinsFound: 0, usersCreated: 0, usersUpdated: 0, note: "Tidak ada data absensi ditemukan" };
+  if (!pins.length)
+    return {
+      pinsFound: 0,
+      usersCreated: 0,
+      usersUpdated: 0,
+      note: "Tidak ada data absensi ditemukan",
+    };
 
   await prisma.pinList.deleteMany({ where: { deviceCloudId: cloudId } });
   for (const pin of pins) {
@@ -169,13 +179,18 @@ async function syncUsersFromAttlog(cloudId: string) {
   };
 }
 
-async function fetchAndSaveAttlog(cloudId: string, startDate: string, endDate: string) {
+async function fetchAndSaveAttlog(
+  cloudId: string,
+  startDate: string,
+  endDate: string,
+) {
   const result = await fingerspot.getAttlog(startDate, endDate);
   if (result?.success !== true) return result;
 
   let rows: any[] = [];
   if (Array.isArray(result.data)) rows = result.data;
-  else if (result.data && Array.isArray((result.data as any).data)) rows = (result.data as any).data;
+  else if (result.data && Array.isArray((result.data as any).data))
+    rows = (result.data as any).data;
 
   if (rows.length > 0) {
     const summary = await upsertAttendanceFromGetAttlogRows(cloudId, rows);
@@ -183,7 +198,8 @@ async function fetchAndSaveAttlog(cloudId: string, startDate: string, endDate: s
     (result as any).attlog_created = summary.created;
     (result as any).attlog_dedupedExisting = summary.dedupedExisting;
     (result as any).attlog_skippedNoPinOrScan = summary.skippedNoPinOrScan;
-    (result as any).attlog_skippedInvalidScanTime = summary.skippedInvalidScanTime;
+    (result as any).attlog_skippedInvalidScanTime =
+      summary.skippedInvalidScanTime;
     (result as any).attlog_errors = summary.errors;
   }
 
@@ -194,13 +210,13 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { command, cloudId, params } = body;
-    const targetCloudId = cloudId ?? body?.cloudId ?? process.env.FINGERSPOT_CLOUD_ID ?? "";
+    const targetCloudId =
+      cloudId ?? body?.cloudId ?? process.env.FINGERSPOT_CLOUD_ID ?? "";
 
     const startTime = Date.now();
     let result: any;
 
     switch (command) {
-
       case "get_attlog":
         result = await fetchAndSaveAttlog(
           String(targetCloudId),
@@ -238,9 +254,10 @@ export async function POST(request: NextRequest) {
           success: true,
           message: "Sinkronisasi user selesai",
           sync: syncSummary,
-          note: syncSummary.pinsFound === 0
-            ? "Tidak ada data absensi ditemukan."
-            : `${syncSummary.pinsFound} PIN ditemukan dari data absensi. ${syncSummary.usersCreated} user baru dibuat.`,
+          note:
+            syncSummary.pinsFound === 0
+              ? "Tidak ada data absensi ditemukan."
+              : `${syncSummary.pinsFound} PIN ditemukan dari data absensi. ${syncSummary.usersCreated} user baru dibuat.`,
         };
         break;
       }
@@ -252,9 +269,9 @@ export async function POST(request: NextRequest) {
           where: { pin: { in: pins } },
           select: { pin: true, name: true },
         });
-        const nameMap = new Map(existingUsers.map(u => [u.pin, u.name]));
+        const nameMap = new Map(existingUsers.map((u) => [u.pin, u.name]));
 
-        const namedPins = pins.map(pin => ({
+        const namedPins = pins.map((pin) => ({
           pin,
           name: nameMap.get(pin) || null,
         }));
@@ -269,24 +286,35 @@ export async function POST(request: NextRequest) {
           success: true,
           pins: namedPins,
           total: pins.length,
-          gotNames: namedPins.filter(p => p.name).length,
-          message: pins.length > 0
-            ? `${pins.length} PIN ditemukan dari data absensi 30 hari terakhir`
-            : "Tidak ada PIN ditemukan. Pastikan mesin sudah merekam absensi.",
+          gotNames: namedPins.filter((p) => p.name).length,
+          message:
+            pins.length > 0
+              ? `${pins.length} PIN ditemukan dari data absensi 30 hari terakhir`
+              : "Tidak ada PIN ditemukan. Pastikan mesin sudah merekam absensi.",
         };
         break;
       }
 
       case "save_selected_pins": {
         const { pins: selectedPins } = body;
-        if (!selectedPins || !Array.isArray(selectedPins) || selectedPins.length === 0) {
-          return NextResponse.json({ success: false, error: "Pilih minimal 1 PIN" }, { status: 400 });
+        if (
+          !selectedPins ||
+          !Array.isArray(selectedPins) ||
+          selectedPins.length === 0
+        ) {
+          return NextResponse.json(
+            { success: false, error: "Pilih minimal 1 PIN" },
+            { status: 400 },
+          );
         }
         const userRows = selectedPins.map((p: any) => ({
           pin: String(p.pin ?? p),
           name: p.name ? String(p.name) : `User ${p.pin ?? p}`,
         }));
-        const userResult = await upsertUserInfoBatch(String(targetCloudId), userRows);
+        const userResult = await upsertUserInfoBatch(
+          String(targetCloudId),
+          userRows,
+        );
 
         // Fire get_userinfo so webhook callback can update names when it arrives
         for (const row of userRows) {
@@ -305,19 +333,34 @@ export async function POST(request: NextRequest) {
       case "try_fetch_userinfo": {
         const { pins: fetchPins } = body;
         if (!fetchPins || !Array.isArray(fetchPins) || fetchPins.length === 0) {
-          return NextResponse.json({ success: false, error: "Tidak ada PIN" }, { status: 400 });
+          return NextResponse.json(
+            { success: false, error: "Tidak ada PIN" },
+            { status: 400 },
+          );
         }
-        const results: { pin: string; name?: string; ack: boolean; error?: string }[] = [];
+        const results: {
+          pin: string;
+          name?: string;
+          ack: boolean;
+          error?: string;
+        }[] = [];
         for (const rawPin of fetchPins) {
           const pin = String(rawPin.pin ?? rawPin);
           try {
-            const res = await fingerspot.getUserInfo(pin, `fetch-${Date.now()}`);
-            if (res.success && res.data && res.data.data && res.data.data.name) {
-              results.push({ pin, name: res.data.data.name, ack: false });
+            const res = await fingerspot.getUserInfo(
+              pin,
+              `fetch-${Date.now()}`,
+            );
+            if (res.success && res.data && res.data.name) {
+              results.push({ pin, name: res.data.name, ack: false });
             } else if (res.success && res.data && res.data.name) {
               results.push({ pin, name: res.data.name, ack: false });
             } else {
-              results.push({ pin, ack: true, error: res.data?.message || "ACK (webhook expected)" });
+              results.push({
+                pin,
+                ack: true,
+                error: res.data?.message || "ACK (webhook expected)",
+              });
             }
           } catch (e) {
             results.push({ pin, ack: true, error: String(e) });
@@ -326,14 +369,17 @@ export async function POST(request: NextRequest) {
         result = {
           success: true,
           results,
-          gotNames: results.filter(r => r.name).length,
-          ackOnly: results.filter(r => r.ack).length,
+          gotNames: results.filter((r) => r.name).length,
+          ackOnly: results.filter((r) => r.ack).length,
         };
         break;
       }
 
       case "reg_online":
-        result = await fingerspot.registerOnline(params.pin, params.verification);
+        result = await fingerspot.registerOnline(
+          params.pin,
+          params.verification,
+        );
         break;
 
       case "get_device":
@@ -359,16 +405,17 @@ export async function POST(request: NextRequest) {
           select: { pin: true },
           take: 50,
         });
-        const pinList = unnamedPins.map(p => p.pin);
+        const pinList = unnamedPins.map((p) => p.pin);
         for (const pin of pinList) {
           fingerspot.getUserInfo(pin, `refresh-${Date.now()}`).catch(() => {});
         }
         result = {
           success: true,
           sent: pinList.length,
-          message: pinList.length > 0
-            ? `Mengirim ${pinList.length} permintaan detail user ke mesin. Nama akan terisi otomatis lewat webhook.`
-            : "Semua user sudah memiliki nama.",
+          message:
+            pinList.length > 0
+              ? `Mengirim ${pinList.length} permintaan detail user ke mesin. Nama akan terisi otomatis lewat webhook.`
+              : "Semua user sudah memiliki nama.",
         };
         break;
       }

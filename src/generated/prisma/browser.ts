@@ -33,6 +33,51 @@ export type AttendanceLog = Prisma.AttendanceLogModel
  */
 export type UserInfo = Prisma.UserInfoModel
 /**
+ * Model Aturan
+ * 
+ */
+export type Aturan = Prisma.AturanModel
+/**
+ * Model JamKerja
+ * 
+ */
+export type JamKerja = Prisma.JamKerjaModel
+/**
+ * Model JadwalAuto
+ * 
+ */
+export type JadwalAuto = Prisma.JadwalAutoModel
+/**
+ * Model JadwalAutoDay
+ * 
+ */
+export type JadwalAutoDay = Prisma.JadwalAutoDayModel
+/**
+ * Model JadwalAutoEmployee
+ * 
+ */
+export type JadwalAutoEmployee = Prisma.JadwalAutoEmployeeModel
+/**
+ * Model JadwalManual
+ * 
+ */
+export type JadwalManual = Prisma.JadwalManualModel
+/**
+ * Model MasterIzinCuti
+ * 
+ */
+export type MasterIzinCuti = Prisma.MasterIzinCutiModel
+/**
+ * Model RiwayatIzinCuti
+ * 
+ */
+export type RiwayatIzinCuti = Prisma.RiwayatIzinCutiModel
+/**
+ * Model AttendanceReport
+ * 
+ */
+export type AttendanceReport = Prisma.AttendanceReportModel
+/**
  * Model PinList
  * 
  */

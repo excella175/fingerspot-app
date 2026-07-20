@@ -67,6 +67,175 @@ model UserInfo {
 }
 
 // ============================================
+// ATURAN (Rules Jam Kerja)
+// ============================================
+model Aturan {
+  id                    String   @id @default(cuid())
+  kode                  String   @unique
+  name                  String
+  toleransiTerlambat    Int      @default(0) @map("toleransi_terlambat")
+  toleransiPulangCepat  Int      @default(0) @map("toleransi_pulang_cepat")
+  batasAbsensiMasuk     Int      @default(0) @map("batas_absensi_masuk") // menit setelah jam mulai
+  batasAbsensiPulang    Int      @default(0) @map("batas_absensi_pulang") // menit sebelum jam selesai
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  @@map("aturans")
+}
+
+// ============================================
+// JAM KERJA (Working Hour Definitions)
+// ============================================
+model JamKerja {
+  id               String   @id @default(cuid())
+  kode             String   @unique
+  name             String
+  type             String   @default("tetap") // tetap, fleksibel
+  aturanKode       String   @map("aturan_kode")
+  hariKerja        Int      @default(5) @map("hari_kerja")
+
+  // Tetap
+  startTime        String?  @map("start_time")
+  endTime          String?  @map("end_time")
+  istirahatAktif   Boolean  @default(false) @map("istirahat_aktif")
+  istirahatStart   String?  @map("istirahat_start")
+  istirahatEnd     String?  @map("istirahat_end")
+  lemburAktif      Boolean  @default(false) @map("lembur_aktif")
+  lemburAwalMin    Int?     @map("lembur_awal_min")
+  lemburAwalMax    Int?     @map("lembur_awal_max")
+  lemburAkhirMin   Int?     @map("lembur_akhir_min")
+  lemburAkhirMax   Int?     @map("lembur_akhir_max")
+
+  // Fleksibel
+  maxDuration      Int?     @map("max_duration")
+  cutoffStart      String?  @map("cutoff_start")
+  cutoffEnd        String?  @map("cutoff_end")
+  lemburMin        Int?     @map("lembur_min")
+  lemburMax        Int?     @map("lembur_max")
+
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@map("jam_kerjas")
+}
+
+// ============================================
+// JADWAL AUTO (Schedule Template)
+// ============================================
+model JadwalAuto {
+  id        String              @id @default(cuid())
+  name      String
+  createdAt DateTime            @default(now()) @map("created_at")
+  updatedAt DateTime            @updatedAt @map("updated_at")
+  days      JadwalAutoDay[]
+  employees JadwalAutoEmployee[]
+
+  @@map("jadwal_autos")
+}
+
+model JadwalAutoDay {
+  id           String     @id @default(cuid())
+  jadwalId     String     @map("jadwal_id")
+  dayOfWeek    Int        @map("day_of_week") // 0=Min, 1=Sen, ..., 6=Sab
+  jamKerjaKode String     @map("jam_kerja_kode")
+  jadwal       JadwalAuto @relation(fields: [jadwalId], references: [id], onDelete: Cascade)
+
+  @@unique([jadwalId, dayOfWeek])
+  @@map("jadwal_auto_days")
+}
+
+model JadwalAutoEmployee {
+  id           String     @id @default(cuid())
+  jadwalId     String     @map("jadwal_id")
+  employeePin  String     @map("employee_pin")
+  jadwal       JadwalAuto @relation(fields: [jadwalId], references: [id], onDelete: Cascade)
+
+  @@unique([jadwalId, employeePin])
+  @@map("jadwal_auto_employees")
+}
+
+// ============================================
+// JADWAL MANUAL (Per-Employee Per-Date)
+// ============================================
+model JadwalManual {
+  id           String   @id @default(cuid())
+  employeePin  String   @map("employee_pin")
+  date         DateTime
+  jamKerjaKode String   @map("jam_kerja_kode")
+  startTime    String?  @map("start_time") // override
+  endTime      String?  @map("end_time") // override
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@unique([employeePin, date])
+  @@map("jadwal_manuals")
+}
+
+// ============================================
+// MASTER IZIN & CUTI
+// ============================================
+model MasterIzinCuti {
+  id              String   @id @default(cuid())
+  nama            String
+  tipe            String   @default("izin") // izin, cuti
+  kuota           Int      @default(1)
+  masaKerja       Int      @default(1) // minimal bulan bekerja
+  aturPengajuan   Int      @default(0) // H-berapa boleh ajukan
+  batasPengajuan  Int      @default(1) // maks hari per pengajuan
+  statusAbsensi   String   @default("H") // H, I, S, dll
+  jenisKelamin    String   @default("semua") // semua, laki-laki, perempuan
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("master_izin_cuti")
+}
+
+// ============================================
+// RIWAYAT IZIN & CUTI
+// ============================================
+model RiwayatIzinCuti {
+  id            String   @id @default(cuid())
+  employeePin   String   @map("employee_pin")
+  masterIzinId  String   @map("master_izin_id")
+  startDate     DateTime @map("start_date")
+  endDate       DateTime @map("end_date")
+  foto          String?  // URL foto
+  catatan       String?
+  status        String   @default("pending") // pending, approved, rejected
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([employeePin])
+  @@index([startDate])
+  @@index([endDate])
+  @@index([status])
+  @@map("riwayat_izin_cuti")
+}
+
+// ============================================
+// ATTENDANCE REPORT (Laporan Kehadiran)
+// ============================================
+model AttendanceReport {
+  id               String    @id @default(cuid())
+  employeePin      String    @map("employee_pin")
+  date             DateTime
+  status           String    @default("H") // H, A, I, S, C, TL (telat), PL (pulang cepat), LB (lembur)
+  scanIn           DateTime? @map("scan_in")
+  scanOut          DateTime? @map("scan_out")
+  scheduledStart   String?   @map("scheduled_start")
+  scheduledEnd     String?   @map("scheduled_end")
+  lateMinutes      Int?      @map("late_minutes")
+  earlyLeaveMinutes Int?     @map("early_leave_minutes")
+  overtimeMinutes  Int?      @map("overtime_minutes")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  @@unique([employeePin, date])
+  @@index([employeePin])
+  @@index([date])
+  @@map("attendance_reports")
+}
+
+// ============================================
 // PIN LIST (Daftar PIN dari Mesin)
 // ============================================
 model PinList {

@@ -54,6 +54,15 @@ export const ModelName = {
   Device: 'Device',
   AttendanceLog: 'AttendanceLog',
   UserInfo: 'UserInfo',
+  Aturan: 'Aturan',
+  JamKerja: 'JamKerja',
+  JadwalAuto: 'JadwalAuto',
+  JadwalAutoDay: 'JadwalAutoDay',
+  JadwalAutoEmployee: 'JadwalAutoEmployee',
+  JadwalManual: 'JadwalManual',
+  MasterIzinCuti: 'MasterIzinCuti',
+  RiwayatIzinCuti: 'RiwayatIzinCuti',
+  AttendanceReport: 'AttendanceReport',
   PinList: 'PinList',
   ApiLog: 'ApiLog',
   WebhookLog: 'WebhookLog'
@@ -123,6 +132,144 @@ export const UserInfoScalarFieldEnum = {
 } as const
 
 export type UserInfoScalarFieldEnum = (typeof UserInfoScalarFieldEnum)[keyof typeof UserInfoScalarFieldEnum]
+
+
+export const AturanScalarFieldEnum = {
+  id: 'id',
+  kode: 'kode',
+  name: 'name',
+  toleransiTerlambat: 'toleransiTerlambat',
+  toleransiPulangCepat: 'toleransiPulangCepat',
+  batasAbsensiMasuk: 'batasAbsensiMasuk',
+  batasAbsensiPulang: 'batasAbsensiPulang',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type AturanScalarFieldEnum = (typeof AturanScalarFieldEnum)[keyof typeof AturanScalarFieldEnum]
+
+
+export const JamKerjaScalarFieldEnum = {
+  id: 'id',
+  kode: 'kode',
+  name: 'name',
+  type: 'type',
+  aturanKode: 'aturanKode',
+  hariKerja: 'hariKerja',
+  startTime: 'startTime',
+  endTime: 'endTime',
+  istirahatAktif: 'istirahatAktif',
+  istirahatStart: 'istirahatStart',
+  istirahatEnd: 'istirahatEnd',
+  lemburAktif: 'lemburAktif',
+  lemburAwalMin: 'lemburAwalMin',
+  lemburAwalMax: 'lemburAwalMax',
+  lemburAkhirMin: 'lemburAkhirMin',
+  lemburAkhirMax: 'lemburAkhirMax',
+  maxDuration: 'maxDuration',
+  cutoffStart: 'cutoffStart',
+  cutoffEnd: 'cutoffEnd',
+  lemburMin: 'lemburMin',
+  lemburMax: 'lemburMax',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type JamKerjaScalarFieldEnum = (typeof JamKerjaScalarFieldEnum)[keyof typeof JamKerjaScalarFieldEnum]
+
+
+export const JadwalAutoScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type JadwalAutoScalarFieldEnum = (typeof JadwalAutoScalarFieldEnum)[keyof typeof JadwalAutoScalarFieldEnum]
+
+
+export const JadwalAutoDayScalarFieldEnum = {
+  id: 'id',
+  jadwalId: 'jadwalId',
+  dayOfWeek: 'dayOfWeek',
+  jamKerjaKode: 'jamKerjaKode'
+} as const
+
+export type JadwalAutoDayScalarFieldEnum = (typeof JadwalAutoDayScalarFieldEnum)[keyof typeof JadwalAutoDayScalarFieldEnum]
+
+
+export const JadwalAutoEmployeeScalarFieldEnum = {
+  id: 'id',
+  jadwalId: 'jadwalId',
+  employeePin: 'employeePin'
+} as const
+
+export type JadwalAutoEmployeeScalarFieldEnum = (typeof JadwalAutoEmployeeScalarFieldEnum)[keyof typeof JadwalAutoEmployeeScalarFieldEnum]
+
+
+export const JadwalManualScalarFieldEnum = {
+  id: 'id',
+  employeePin: 'employeePin',
+  date: 'date',
+  jamKerjaKode: 'jamKerjaKode',
+  startTime: 'startTime',
+  endTime: 'endTime',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type JadwalManualScalarFieldEnum = (typeof JadwalManualScalarFieldEnum)[keyof typeof JadwalManualScalarFieldEnum]
+
+
+export const MasterIzinCutiScalarFieldEnum = {
+  id: 'id',
+  nama: 'nama',
+  tipe: 'tipe',
+  kuota: 'kuota',
+  masaKerja: 'masaKerja',
+  aturPengajuan: 'aturPengajuan',
+  batasPengajuan: 'batasPengajuan',
+  statusAbsensi: 'statusAbsensi',
+  jenisKelamin: 'jenisKelamin',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type MasterIzinCutiScalarFieldEnum = (typeof MasterIzinCutiScalarFieldEnum)[keyof typeof MasterIzinCutiScalarFieldEnum]
+
+
+export const RiwayatIzinCutiScalarFieldEnum = {
+  id: 'id',
+  employeePin: 'employeePin',
+  masterIzinId: 'masterIzinId',
+  startDate: 'startDate',
+  endDate: 'endDate',
+  foto: 'foto',
+  catatan: 'catatan',
+  status: 'status',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type RiwayatIzinCutiScalarFieldEnum = (typeof RiwayatIzinCutiScalarFieldEnum)[keyof typeof RiwayatIzinCutiScalarFieldEnum]
+
+
+export const AttendanceReportScalarFieldEnum = {
+  id: 'id',
+  employeePin: 'employeePin',
+  date: 'date',
+  status: 'status',
+  scanIn: 'scanIn',
+  scanOut: 'scanOut',
+  scheduledStart: 'scheduledStart',
+  scheduledEnd: 'scheduledEnd',
+  lateMinutes: 'lateMinutes',
+  earlyLeaveMinutes: 'earlyLeaveMinutes',
+  overtimeMinutes: 'overtimeMinutes',
+  createdAt: 'createdAt'
+} as const
+
+export type AttendanceReportScalarFieldEnum = (typeof AttendanceReportScalarFieldEnum)[keyof typeof AttendanceReportScalarFieldEnum]
 
 
 export const PinListScalarFieldEnum = {

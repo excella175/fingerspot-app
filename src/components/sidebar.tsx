@@ -3,38 +3,84 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
 import {
   LayoutDashboard,
-  Fingerprint,
   Users,
-  ListOrdered,
   ScrollText,
   Webhook,
-  FileJson,
   MonitorCog,
   LogOut,
   FingerprintIcon,
+  FileText,
+  ChevronDown,
+  CalendarClock,
+  CalendarCheck,
+  ClipboardList,
+  Clock,
+  CalendarRange,
+  Ban,
+  Gavel,
+  Briefcase,
+  CalendarDays,
 } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
-  { name: "Data Absensi", href: "/attlog", icon: Fingerprint },
+  {
+    name: "Laporan",
+    icon: FileText,
+    children: [
+      { name: "Data Absensi", href: "/attlog", icon: ClipboardList },
+      { name: "Laporan Detail", href: "/reports/detail", icon: CalendarClock },
+      { name: "Laporan Kehadiran", href: "/reports/attendance", icon: CalendarCheck },
+    ],
+  },
+  {
+    name: "Jam & Jadwal",
+    icon: Clock,
+    children: [
+      { name: "Aturan", href: "/aturan", icon: Gavel },
+      { name: "Jam Kerja", href: "/jam-kerja", icon: Briefcase },
+      { name: "Jadwal", href: "/jadwal", icon: CalendarDays },
+    ],
+  },
+  {
+    name: "Izin & Cuti",
+    icon: Ban,
+    children: [
+      { name: "Master Izin & Cuti", href: "/izin-cuti/master", icon: ClipboardList },
+      { name: "Riwayat Izin & Cuti", href: "/izin-cuti/riwayat", icon: CalendarClock },
+    ],
+  },
   { name: "Data User", href: "/userinfo", icon: Users },
-  { name: "Daftar PIN", href: "/pins", icon: ListOrdered },
   { name: "Perangkat", href: "/devices", icon: MonitorCog },
   { name: "Riwayat API", href: "/api-logs", icon: ScrollText },
   { name: "Riwayat Webhook", href: "/webhook-logs", icon: Webhook },
-  { name: "Detail Payload", href: "/payload", icon: FileJson },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({
+    Laporan: pathname.startsWith("/attlog") || pathname.startsWith("/reports/"),
+    "Jam & Jadwal": pathname.startsWith("/aturan") || pathname.startsWith("/jam-kerja") || pathname.startsWith("/jadwal"),
+    "Izin & Cuti": pathname.startsWith("/izin-cuti/"),
+  });
+
+  const toggleMenu = (name: string) => {
+    setOpenMenus((prev) => ({ ...prev, [name]: !prev[name] }));
+  };
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
     router.refresh();
+  };
+
+  const isActive = (href: string) => {
+    if (href === "/") return pathname === "/";
+    return pathname.startsWith(href);
   };
 
   return (
@@ -48,21 +94,68 @@ export function Sidebar() {
           <p className="text-[10px] font-medium text-gray-400">Attendance System</p>
         </div>
       </div>
-      <nav className="flex-1 space-y-0.5 px-3 py-4">
+      <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
         {navigation.map((item) => {
-          const isActive = pathname === item.href;
+          if ("children" in item && item.children) {
+            const isOpen = openMenus[item.name] ?? true;
+            return (
+              <div key={item.name}>
+                <button
+                  onClick={() => toggleMenu(item.name)}
+                  className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium text-gray-500 transition-all duration-150 hover:bg-gray-50 hover:text-gray-900"
+                >
+                  <div className="flex items-center gap-3">
+                    <item.icon className="h-[18px] w-[18px] flex-shrink-0" />
+                    {item.name}
+                  </div>
+                  <ChevronDown
+                    className={cn(
+                      "h-3.5 w-3.5 transition-transform duration-150",
+                      isOpen && "rotate-180"
+                    )}
+                  />
+                </button>
+                {isOpen && (
+                  <div className="ml-5 mt-0.5 space-y-0.5 border-l-2 border-gray-100 pl-2">
+                    {item.children.map((child) => {
+                      const active = isActive(child.href);
+                      return (
+                        <Link
+                          key={child.name}
+                          href={child.href}
+                          className={cn(
+                            "flex items-center gap-2.5 rounded-lg px-3 py-2 text-[12.5px] font-medium transition-all duration-150",
+                            active
+                              ? "bg-blue-50 text-blue-700"
+                              : "text-gray-400 hover:bg-gray-50 hover:text-gray-700"
+                          )}
+                        >
+                          <child.icon className="h-3.5 w-3.5 flex-shrink-0" />
+                          {child.name}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          }
+
+          const active = isActive(item.href);
           return (
             <Link
               key={item.name}
               href={item.href}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-all duration-150",
-                isActive
+                active
                   ? "bg-blue-50 text-blue-700 shadow-sm"
                   : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
               )}
             >
-              <item.icon className={cn("h-[18px] w-[18px] flex-shrink-0", isActive && "text-blue-600")} />
+              <item.icon
+                className={cn("h-[18px] w-[18px] flex-shrink-0", active && "text-blue-600")}
+              />
               {item.name}
             </Link>
           );
