@@ -88,6 +88,7 @@ export default function AttendanceReportPage() {
   const [loading, setLoading] = useState(true);
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [userList, setUserList] = useState<UserInfoEntry[]>([]);
+  const [generating, setGenerating] = useState(false);
 
   const daysInMonth = getDaysInMonth(year, month);
 
@@ -344,6 +345,22 @@ export default function AttendanceReportPage() {
           </div>
 
           <div className="flex items-center gap-2 pb-0.5">
+            <button
+              onClick={async () => {
+                setGenerating(true);
+                try {
+                  const res = await fetch(`/api/reports?command=generate&month=${month}&year=${year}`);
+                  const d = await res.json();
+                  if (d.success) { alert("Laporan berhasil digenerate untuk " + month + "/" + year); fetchReport(); }
+                  else alert("Gagal: " + (d.error || ""));
+                } catch { alert("Gagal generate laporan"); }
+                setGenerating(false);
+              }}
+              disabled={generating}
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-[13px] font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm shadow-blue-200"
+            >
+              {generating ? "Memproses..." : "Generate Laporan"}
+            </button>
             <button
               onClick={exportExcel}
               disabled={!data || reportData.length === 0}

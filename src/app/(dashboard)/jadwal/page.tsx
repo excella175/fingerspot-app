@@ -327,7 +327,6 @@ export default function JadwalPage() {
                   <input value={manualSearch} onChange={e => setManualSearch(e.target.value)} className="flex-1 border-0 bg-transparent text-[13px] outline-none" placeholder="Nama atau PIN..." />
                 </div>
               </div>
-              <button onClick={() => openAddManual()} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-[13px] font-medium text-white hover:bg-blue-700 shadow-sm shadow-blue-200"><Plus className="h-4 w-4" />Tambah</button>
               <button onClick={exportExcel} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-[13px] font-medium text-white hover:bg-emerald-700 shadow-sm shadow-emerald-200"><Download className="h-4 w-4" />Export Excel</button>
               <label className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-[13px] font-medium text-white hover:bg-amber-700 shadow-sm shadow-amber-200 cursor-pointer">
                 <Upload className="h-4 w-4" />Import Excel
@@ -375,9 +374,7 @@ export default function JadwalPage() {
                           </td>
                           <td className="px-4 py-2.5 text-center">
                             <div className="flex items-center justify-center gap-1">
-                              {row.schedule.source === "auto" ? (
-                                <button onClick={() => openAddManual(row.pin, row.date)} className="rounded-lg p-1.5 text-gray-400 hover:bg-green-50 hover:text-green-600" title="Override Manual"><Plus className="h-3.5 w-3.5" /></button>
-                              ) : manualEntry && (
+                              {manualEntry && (
                                 <>
                                   <button onClick={() => openEditManual(manualEntry)} className="rounded-lg p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-600"><Pencil className="h-3.5 w-3.5" /></button>
                                   <button onClick={() => deleteManual(manualEntry.id)} className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"><Trash2 className="h-3.5 w-3.5" /></button>
@@ -393,6 +390,39 @@ export default function JadwalPage() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Manual Edit Modal */}
+      {manualModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setManualModal(false)}>
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-bold text-gray-900">Edit Jadwal Manual</h3>
+              <button onClick={() => setManualModal(false)} className="rounded-lg p-1 text-gray-400 hover:bg-gray-100"><X className="h-4 w-4" /></button>
+            </div>
+            <div className="space-y-3">
+              <div><label className="block text-[13px] font-medium text-gray-500">Karyawan</label>
+                <select value={manualForm.employeePin} onChange={e => setManualForm(p => ({ ...p, employeePin: e.target.value }))} className="mt-1 block w-full rounded-xl border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none">
+                  {users.map(u => <option key={u.pin} value={u.pin}>{u.name} ({u.pin})</option>)}
+                </select>
+              </div>
+              <div><label className="block text-[13px] font-medium text-gray-500">Tanggal</label><input type="date" value={manualForm.date} onChange={e => setManualForm(p => ({ ...p, date: e.target.value }))} className="mt-1 block w-full rounded-xl border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none" /></div>
+              <div><label className="block text-[13px] font-medium text-gray-500">Jam Kerja</label>
+                <select value={manualForm.jamKerjaKode} onChange={e => setManualForm(p => ({ ...p, jamKerjaKode: e.target.value }))} className="mt-1 block w-full rounded-xl border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none">
+                  {jamKerja.map(j => <option key={j.kode} value={j.kode}>{j.kode} - {j.name}</option>)}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="block text-[13px] font-medium text-gray-500">Jam Mulai</label><input type="time" value={manualForm.startTime} onChange={e => setManualForm(p => ({ ...p, startTime: e.target.value }))} className="mt-1 block w-full rounded-xl border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none" /></div>
+                <div><label className="block text-[13px] font-medium text-gray-500">Jam Selesai</label><input type="time" value={manualForm.endTime} onChange={e => setManualForm(p => ({ ...p, endTime: e.target.value }))} className="mt-1 block w-full rounded-xl border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none" /></div>
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end mt-5">
+              <button onClick={() => setManualModal(false)} className="rounded-xl border border-gray-200 px-4 py-2 text-[13px] font-medium text-gray-600 hover:bg-gray-50">Batal</button>
+              <button onClick={saveManual} disabled={savingManual} className="rounded-xl bg-blue-600 px-4 py-2 text-[13px] font-medium text-white hover:bg-blue-700 disabled:opacity-50">{savingManual ? "Menyimpan..." : "Simpan"}</button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -441,41 +471,7 @@ export default function JadwalPage() {
         </div>
       )}
 
-      {/* Manual Modal */}
-      {manualModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setManualModal(false)}>
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-bold text-gray-900">{editManualId ? "Edit" : "Tambah"} Jadwal Manual</h3>
-              <button onClick={() => setManualModal(false)} className="rounded-lg p-1 text-gray-400 hover:bg-gray-100"><X className="h-4 w-4" /></button>
-            </div>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-[13px] font-medium text-gray-500">Karyawan</label>
-                <select value={manualForm.employeePin} onChange={e => setManualForm(p => ({ ...p, employeePin: e.target.value }))} className="mt-1 block w-full rounded-xl border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none">
-                  <option value="">Pilih</option>
-                  {users.map(u => <option key={u.pin} value={u.pin}>{u.name} ({u.pin})</option>)}
-                </select>
-              </div>
-              <div><label className="block text-[13px] font-medium text-gray-500">Tanggal</label><input type="date" value={manualForm.date} onChange={e => setManualForm(p => ({ ...p, date: e.target.value }))} className="mt-1 block w-full rounded-xl border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none" /></div>
-              <div><label className="block text-[13px] font-medium text-gray-500">Jam Kerja</label>
-                <select value={manualForm.jamKerjaKode} onChange={e => setManualForm(p => ({ ...p, jamKerjaKode: e.target.value }))} className="mt-1 block w-full rounded-xl border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none">
-                  <option value="">Pilih</option>
-                  {jamKerja.map(j => <option key={j.kode} value={j.kode}>{j.kode} - {j.name}</option>)}
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="block text-[13px] font-medium text-gray-500">Jam Mulai (opsional)</label><input type="time" value={manualForm.startTime} onChange={e => setManualForm(p => ({ ...p, startTime: e.target.value }))} className="mt-1 block w-full rounded-xl border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none" /></div>
-                <div><label className="block text-[13px] font-medium text-gray-500">Jam Selesai (opsional)</label><input type="time" value={manualForm.endTime} onChange={e => setManualForm(p => ({ ...p, endTime: e.target.value }))} className="mt-1 block w-full rounded-xl border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none" /></div>
-              </div>
-            </div>
-            <div className="flex gap-2 justify-end mt-5">
-              <button onClick={() => setManualModal(false)} className="rounded-xl border border-gray-200 px-4 py-2 text-[13px] font-medium text-gray-600 hover:bg-gray-50">Batal</button>
-              <button onClick={saveManual} disabled={savingManual} className="rounded-xl bg-blue-600 px-4 py-2 text-[13px] font-medium text-white hover:bg-blue-700 disabled:opacity-50">{savingManual ? "Menyimpan..." : "Simpan"}</button>
-            </div>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 }
