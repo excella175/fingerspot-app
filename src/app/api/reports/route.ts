@@ -46,7 +46,7 @@ async function getScheduleForEmployee(pin: string, date: Date, dayOfWeek: number
     },
   });
   if (autoEmp) {
-    const day = autoEmp.jadwal.days.find(d => d.dayOfWeek === dayOfWeek);
+    const day = autoEmp.jadwal.days.find((d: { dayOfWeek: number; jamKerjaKode: string }) => d.dayOfWeek === dayOfWeek);
     if (day && day.jamKerjaKode) return { jamKerjaKode: day.jamKerjaKode };
   }
   return null;
