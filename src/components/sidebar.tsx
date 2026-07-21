@@ -22,6 +22,7 @@ import {
   Gavel,
   Briefcase,
   CalendarDays,
+  Send,
 } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -58,6 +59,7 @@ const navigation = [
   { name: "Perangkat", href: "/devices", icon: MonitorCog },
   { name: "Riwayat API", href: "/api-logs", icon: ScrollText },
   { name: "Riwayat Webhook", href: "/webhook-logs", icon: Webhook },
+  { name: "Test Webhook", href: "/webhook-test", icon: Send },
 ];
 
 export function Sidebar() {

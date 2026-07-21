@@ -1,18 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// Respond quick — Fingerspot may timeout if we're too slow
 export async function GET() {
-  return NextResponse.json({
-    status: "ok",
-    message: "Webhook endpoint aktif. Kirim POST untuk callback.",
-  });
+  return NextResponse.json({ status: "ok", message: "Webhook endpoint aktif." });
 }
 
 export async function POST(request: NextRequest) {
-  const startTime = Date.now();
+  const start = Date.now();
 
-  // 1. Baca raw body (text) — selalu bisa tanpa error
+  // 1. Read body
   let rawText = "";
   try {
     rawText = await request.text();
@@ -20,23 +16,7 @@ export async function POST(request: NextRequest) {
     rawText = "(unreadable)";
   }
 
-  // 2. Log ke database SEGERA — before any processing
-  let logId: string | null = null;
-  try {
-    const log = await prisma.webhookLog.create({
-      data: {
-        type: "raw",
-        deviceCloudId: "pending",
-        status: "RECEIVED",
-        payload: { raw: rawText.substring(0, 5000) } as any,
-      },
-    });
-    logId = log.id;
-  } catch {
-    // DB might be slow on cold start — continue anyway
-  }
-
-  // 3. Parse body
+  // 2. Parse
   let body: any = {};
   try {
     body = rawText ? JSON.parse(rawText) : {};
@@ -45,242 +25,182 @@ export async function POST(request: NextRequest) {
   }
 
   const type = body?.type ?? body?.event ?? "unknown";
-  const cloud_id =
-    body?.cloud_id ??
-    body?.cloudId ??
-    body?.device_cloud_id ??
-    body?.deviceCloudId ??
-    "unknown";
-  const trans_id = body?.trans_id ?? body?.transId ?? null;
-
-  console.log("[Webhook] INCOMING", { type, cloud_id, trans_id });
-
-  // 4. Update log with parsed info (fire & forget — don't block response)
-  if (logId) {
-    updateLog(logId, type, cloud_id, trans_id, body).catch(() => {});
-  }
-
-  // 5. Process based on type (fire & forget)
-  processCallback(type, cloud_id, trans_id, body).catch((e) => {
-    console.error("[Webhook] processCallback error:", e);
-  });
-
-  // 6. Respond FAST — always 200 OK
-  const elapsed = Date.now() - startTime;
-  console.log("[Webhook] Responded in", elapsed, "ms");
-
-  return NextResponse.json({ status: "ok", elapsed });
-}
-
-async function updateLog(
-  id: string,
-  type: string,
-  cloudId: string,
-  transId: string | number | null,
-  body: any,
-) {
-  try {
-    await prisma.webhookLog.update({
-      where: { id },
-      data: {
-        type: String(type),
-        deviceCloudId: String(cloudId),
-        transId: transId?.toString() ?? null,
-        payload: body as any,
-      },
-    });
-  } catch (e) {
-    console.error("[Webhook] updateLog error:", e);
-  }
-}
-
-async function processCallback(
-  type: string,
-  cloudId: string,
-  transId: string | number | null,
-  body: any,
-) {
+  const cloudId = body?.cloud_id ?? body?.cloudId ?? "unknown";
+  const transId = body?.trans_id ?? body?.transId ?? null;
   const data = body?.data ?? body?.payload ?? body;
 
-  switch (type) {
+  // 3. Log to DB async (fire & forget after response)
+  const logPromise = prisma.webhookLog.create({
+    data: {
+      type: String(type),
+      deviceCloudId: String(cloudId),
+      transId: transId?.toString() ?? null,
+      status: "RECEIVED",
+      payload: body as any,
+    },
+  }).catch(() => {});
+
+  // 4. Process based on type
+  switch (String(type)) {
     case "get_userinfo":
     case "userinfo": {
-      const rows = normalizeRows(data);
-      for (const row of rows) {
-        const pin = row.pin ?? row.user_id ?? row.userId;
-        if (!pin) continue;
-
-        const name = row.name ?? row.user_name ?? row.username ?? row.full_name ?? row.fullName;
-        const privilege = row.privilege ?? row.priv ?? row.role ?? null;
-        const finger = row.finger ?? row.fingerPrint ?? row.fingerprint ?? null;
-        const face = row.face ?? null;
-        const rfid = row.rfid ?? row.card ?? row.card_id ?? row.cardId ?? null;
-        const vein = row.vein ?? null;
-        const password = row.password ?? row.pass ?? row.pwd ?? null;
-
-        try {
-          await prisma.userInfo.upsert({
-            where: { pin: String(pin) },
-            update: {
-              ...(name ? { name: String(name) } : {}),
-              ...(password ? { password: String(password) } : {}),
-              ...(privilege != null ? { privilege: Number(privilege) } : {}),
-              ...(finger != null ? { finger: Number(finger) } : {}),
-              ...(face != null ? { face: Number(face) } : {}),
-              ...(rfid != null ? { rfid: Number(rfid) } : {}),
-              ...(vein != null ? { vein: Number(vein) } : {}),
-              deviceCloudId: cloudId,
-            },
-            create: {
-              pin: String(pin),
-              name: name ? String(name) : "Unknown",
-              password: password ? String(password) : null,
-              privilege: privilege != null ? Number(privilege) : 1,
-              finger: finger != null ? Number(finger) : 0,
-              face: face != null ? Number(face) : 0,
-              rfid: rfid != null ? Number(rfid) : 0,
-              vein: vein != null ? Number(vein) : 0,
-              deviceCloudId: cloudId,
-            },
-          });
-        } catch (e) {
-          console.error("[Webhook] upsert userinfo error:", e);
-        }
-      }
+      logPromise.then(() => processUserInfo(data, cloudId));
       break;
     }
-
     case "get_userid_list": {
-      const { extractPinArray } = await import("@/lib/fingerspot-payload");
-      const pins = extractPinArray(data);
-      if (pins.length > 0) {
-        try {
-          await prisma.pinList.deleteMany({ where: { deviceCloudId: cloudId } });
-          for (const pin of pins) {
-            await prisma.pinList.create({
-              data: {
-                deviceCloudId: cloudId,
-                pin: String(pin),
-                total: data?.total != null ? Number(data.total) : null,
-              },
-            });
-          }
-        } catch (e) {
-          console.error("[Webhook] save pinlist error:", e);
-        }
-
-        // Auto-trigger get_userinfo for each new PIN
-        for (const pin of pins.slice(0, 50)) {
-          fetchUserInfoAsync(cloudId, String(pin));
-        }
-      }
+      logPromise.then(() => processPinList(data, cloudId));
       break;
     }
-
-    case "attlog": {
-      const { parseScanTime } = await import("@/lib/fingerspot-payload");
-      const rows = Array.isArray(data) ? data : [data];
-      for (const row of rows) {
-        const pin = row.pin ?? row.employee_pin ?? row.employeePin;
-        const scan = row.scan ?? row.scan_time ?? row.scanTime ?? row.scan_date ?? row.scanDate;
-        const verify = row.verify ?? row.verify_method ?? row.verifyMethod;
-        const status_scan = row.status_scan ?? row.statusScan;
-
-        if (pin == null || scan == null) continue;
-
-        const scanTime = parseScanTime(scan);
-        if (!scanTime) continue;
-
-        try {
-          const existing = await prisma.attendanceLog.findFirst({
-            where: { employeePin: String(pin), deviceCloudId: cloudId, scanTime },
-          });
-          if (existing) continue;
-
-          const statusMap: Record<number, string> = { 0: "IN", 1: "OUT", 2: "BREAK_IN", 3: "BREAK_OUT" };
-          await prisma.attendanceLog.create({
-            data: {
-              employeePin: String(pin),
-              deviceCloudId: cloudId,
-              scanTime,
-              verifyMethod: verify != null ? Number(verify) : null,
-              statusScan: status_scan != null ? Number(status_scan) : null,
-              status: statusMap[Number(status_scan)] || "IN",
-              source: "realtime",
-            },
-          });
-        } catch (e) {
-          console.error("[Webhook] save attlog error:", e);
-        }
-      }
-      break;
-    }
-
+    case "attlog":
     case "get_attlog": {
-      const { extractAttlogRows, parseScanTime } = await import("@/lib/fingerspot-payload");
-      const rows = extractAttlogRows(data);
-      for (const row of rows) {
-        const pin = row.pin ?? row.employee_pin ?? row.employeePin;
-        const scan = row.scan ?? row.scan_date ?? row.scanDate ?? row.scan_time ?? row.scanTime;
-        const verify = row.verify ?? row.verify_method ?? row.verifyMethod;
-        const status_scan = row.status_scan ?? row.statusScan;
-
-        if (pin == null || scan == null) continue;
-
-        const scanTime = parseScanTime(scan);
-        if (!scanTime) continue;
-
-        try {
-          const existing = await prisma.attendanceLog.findFirst({
-            where: { employeePin: String(pin), deviceCloudId: cloudId, scanTime },
-          });
-          if (existing) continue;
-
-          const statusMap: Record<number, string> = { 0: "IN", 1: "OUT", 2: "BREAK_IN", 3: "BREAK_OUT" };
-          await prisma.attendanceLog.create({
-            data: {
-              employeePin: String(pin),
-              deviceCloudId: cloudId,
-              scanTime,
-              verifyMethod: verify != null ? Number(verify) : null,
-              statusScan: status_scan != null ? Number(status_scan) : null,
-              status: statusMap[Number(status_scan)] || "IN",
-              source: "api",
-            },
-          });
-        } catch (e) {
-          console.error("[Webhook] save get_attlog error:", e);
-        }
-      }
+      logPromise.then(() => processAttlog(data, cloudId, type));
       break;
     }
-
-    default:
-      console.log("[Webhook] Unhandled type:", type);
-  }
-}
-
-function normalizeRows(value: any): any[] {
-  if (Array.isArray(value)) return value.filter((v) => v && typeof v === "object");
-  if (!value || typeof value !== "object") return [];
-  // Check if value has known user fields
-  const hasDirect = ["pin", "name", "user_id", "privilege", "finger"].some((k) => k in value);
-  if (hasDirect) return [value];
-  // Check nested data/result/response
-  for (const key of ["data", "result", "response", "userinfo", "user", "users", "rows", "list"]) {
-    if (key in value) {
-      const nested = normalizeRows(value[key]);
-      if (nested.length > 0) return nested;
+    default: {
+      console.log("[Webhook] Type:", type, "body:", JSON.stringify(body).slice(0, 300));
     }
   }
-  return [];
+
+  const elapsed = Date.now() - start;
+  return NextResponse.json({
+    status: "ok",
+    received: true,
+    type,
+    elapsed_ms: elapsed,
+  });
 }
 
-async function fetchUserInfoAsync(cloudId: string, pin: string) {
-  const mod = await import("@/lib/fingerspot");
+async function processUserInfo(data: any, cloudId: string) {
+  const rows = Array.isArray(data) ? data : data?.Rows ?? data?.rows ?? data?.UserInfo ?? data?.userInfo ?? (data?.Data ?? data?.data) ?? [data].filter((x: any) => x && typeof x === "object");
+  const list = Array.isArray(rows) ? rows : typeof rows === "object" && rows !== null ? [rows] : [];
+
+  for (const row of list) {
+    const pin = row?.PIN ?? row?.pin ?? row?.UserID ?? row?.user_id ?? row?.userId;
+    if (pin == null) continue;
+
+    const name = row?.Name ?? row?.name ?? row?.UserName ?? row?.username;
+    const password = row?.Password ?? row?.password ?? row?.pass ?? row?.PWD ?? row?.pwd;
+    const privilege = row?.Privilege ?? row?.privilege ?? row?.Role ?? row?.role ?? row?.Level ?? row?.level;
+    const finger = row?.Finger ?? row?.finger ?? row?.FingerPrint ?? row?.fingerPrint;
+    const face = row?.Face ?? row?.face ?? row?.FaceId ?? row?.faceId;
+    const rfid = row?.RFID ?? row?.rfid ?? row?.Card ?? row?.card ?? row?.CardId ?? row?.cardId;
+    const vein = row?.Vein ?? row?.vein;
+
+    try {
+      await prisma.userInfo.upsert({
+        where: { pin: String(pin) },
+        update: {
+          ...(name ? { name: String(name) } : {}),
+          ...(password != null ? { password: String(password) } : {}),
+          ...(privilege != null ? { privilege: Number(privilege) } : {}),
+          ...(finger != null ? { finger: Number(finger) } : {}),
+          ...(face != null ? { face: Number(face) } : {}),
+          ...(rfid != null ? { rfid: Number(rfid) } : {}),
+          ...(vein != null ? { vein: Number(vein) } : {}),
+          deviceCloudId: cloudId,
+        },
+        create: {
+          pin: String(pin),
+          name: name ? String(name) : "Unknown",
+          password: password ? String(password) : null,
+          privilege: privilege != null ? Number(privilege) : 1,
+          finger: finger != null ? Number(finger) : 0,
+          face: face != null ? Number(face) : 0,
+          rfid: rfid != null ? Number(rfid) : 0,
+          vein: vein != null ? Number(vein) : 0,
+          deviceCloudId: cloudId,
+        },
+      });
+    } catch (e) {
+      console.error("[Webhook] upsert userinfo:", e);
+    }
+  }
+}
+
+async function processPinList(data: any, cloudId: string) {
+  let pins: string[] = [];
+  if (data?.pin_arr && Array.isArray(data.pin_arr)) {
+    pins = data.pin_arr.map(String);
+  } else if (Array.isArray(data)) {
+    pins = data.map(String);
+  } else if (typeof data === "object" && data !== null) {
+    const candidates = Object.values(data).flat();
+    pins = candidates.filter((v): v is string => typeof v === "string" || typeof v === "number").map(String);
+  }
+
   try {
-    await mod.getUserInfo(pin, `webhook-auto-${Date.now()}`);
+    await prisma.pinList.deleteMany({ where: { deviceCloudId: cloudId } });
+    for (const pin of pins) {
+      await prisma.pinList.create({
+        data: { deviceCloudId: cloudId, pin },
+      });
+    }
+  } catch (e) {
+    console.error("[Webhook] save pinlist:", e);
+  }
+
+  // Auto-fetch userinfo for each pin
+  const apiKey = process.env.FINGERSPOT_API_KEY;
+  const apiUrl = process.env.FINGERSPOT_API_URL || "https://developer.fingerspot.io/api";
+  for (const pin of pins.slice(0, 50)) {
+    fetch(`${apiUrl}/get_userinfo`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ cloud_id: cloudId, trans_id: `webhook-${Date.now()}-${pin}`, pin }),
+    }).catch(() => {});
+  }
+}
+
+async function processAttlog(data: any, cloudId: string, sourceType: string) {
+  const rows = Array.isArray(data) ? data : data?.Rows ?? data?.rows ?? data?.AttLog ?? data?.attLog ?? (data?.Data ?? data?.data) ?? [data].filter((x: any) => x && typeof x === "object");
+  const list = Array.isArray(rows) ? rows : typeof rows === "object" && rows !== null ? [rows] : [];
+
+  for (const row of list) {
+    const pin = row?.PIN ?? row?.pin ?? row?.EmployeePin ?? row?.employee_pin ?? row?.employeePin ?? row?.UserId ?? row?.userId;
+    let scanStr = row?.Scan ?? row?.scan ?? row?.ScanTime ?? row?.scan_time ?? row?.scanTime ?? row?.ScanDate ?? row?.scan_date ?? row?.scanDate ?? row?.DateTime ?? row?.dateTime;
+
+    if (pin == null || scanStr == null) continue;
+    scanStr = String(scanStr);
+
+    const verify = row?.Verify ?? row?.verify ?? row?.VerifyMethod ?? row?.verify_method ?? row?.verifyMethod;
+    const statusScan = row?.StatusScan ?? row?.status_scan ?? row?.statusScan ?? row?.Status ?? row?.status;
+
+    const scanTime = parseScanTime(scanStr);
+    if (!scanTime) continue;
+
+    try {
+      const existing = await prisma.attendanceLog.findFirst({
+        where: { employeePin: String(pin), deviceCloudId: cloudId, scanTime },
+      });
+      if (existing) continue;
+
+      const statusMap: Record<number, string> = { 0: "IN", 1: "OUT", 2: "BREAK_IN", 3: "BREAK_OUT" };
+      await prisma.attendanceLog.create({
+        data: {
+          employeePin: String(pin),
+          deviceCloudId: cloudId,
+          scanTime,
+          verifyMethod: verify != null ? Number(verify) : null,
+          statusScan: statusScan != null ? Number(statusScan) : null,
+          status: statusMap[Number(statusScan)] || "IN",
+          source: sourceType === "attlog" ? "realtime" : "api",
+        },
+      });
+    } catch (e) {
+      console.error("[Webhook] save attlog:", e);
+    }
+  }
+}
+
+function parseScanTime(val: string): Date | null {
+  try {
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) return d;
+    const cleaned = val.replace("T", " ").replace("Z", "").trim();
+    const d2 = new Date(cleaned.replace(" ", "T") + "Z");
+    if (!isNaN(d2.getTime())) return d2;
+    return null;
   } catch {
-    // ignore
+    return null;
   }
 }
