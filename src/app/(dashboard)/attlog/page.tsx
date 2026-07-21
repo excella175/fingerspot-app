@@ -1,14 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { formatDateTime, getVerifyMethod, getStatusScan } from "@/lib/utils";
-import {
-  Download,
-  Search,
-  ChevronLeft,
-  ChevronRight,
-  Fingerprint,
-} from "lucide-react";
+import { Download, Search, ChevronLeft, ChevronRight, Fingerprint } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface AttlogEntry {
   id: string;
@@ -32,9 +30,10 @@ export default function AttlogPage() {
   const [endDate, setEndDate] = useState("");
   const [fetching, setFetching] = useState(false);
   const limit = 50;
+  const initialLoad = useRef(true);
 
-  const fetchData = () => {
-    setLoading(true);
+  const fetchData = (silent = false) => {
+    if (!silent) setLoading(true);
     const params = new URLSearchParams({
       page: page.toString(),
       limit: limit.toString(),
@@ -48,9 +47,9 @@ export default function AttlogPage() {
       .then((d) => {
         setData(d.data || []);
         setTotal(d.total || 0);
-        setLoading(false);
+        if (!silent) setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => { if (!silent) setLoading(false); });
   };
 
   useEffect(() => {
@@ -59,9 +58,8 @@ export default function AttlogPage() {
 
   useEffect(() => {
     const interval = window.setInterval(() => {
-      fetchData();
+      fetchData(true);
     }, 10000);
-
     return () => window.clearInterval(interval);
   }, [page, pin, startDate, endDate]);
 
@@ -109,183 +107,163 @@ export default function AttlogPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-        <div className="flex flex-wrap items-end gap-3">
-          <div>
-            <label className="block text-[13px] font-medium text-gray-500">
-              PIN Karyawan
-            </label>
-            <input
-              type="text"
-              value={pin}
-              onChange={(e) => setPin(e.target.value)}
-              placeholder="Semua"
-              className="mt-1.5 block w-36 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-[13px] focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
+      <Card>
+        <CardContent className="p-5">
+          <div className="flex flex-wrap items-end gap-3">
+            <div>
+              <label className="block text-[13px] font-medium text-gray-500 mb-1.5">
+                PIN Karyawan
+              </label>
+              <Input
+                type="text"
+                value={pin}
+                onChange={(e) => setPin(e.target.value)}
+                placeholder="Semua"
+                className="w-36"
+              />
+            </div>
+            <div>
+              <label className="block text-[13px] font-medium text-gray-500 mb-1.5">
+                Dari Tanggal
+              </label>
+              <Input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-[13px] font-medium text-gray-500 mb-1.5">
+                Sampai Tanggal
+              </label>
+              <Input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+            </div>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setPage(1);
+                fetchData();
+              }}
+            >
+              <Search className="h-4 w-4 mr-1.5" />
+              Filter
+            </Button>
+            <Button
+              onClick={handleFetchFromDevice}
+              disabled={fetching}
+            >
+              <Download className="h-4 w-4 mr-1.5" />
+              {fetching ? "Mengirim..." : "Ambil dari Mesin"}
+            </Button>
           </div>
-          <div>
-            <label className="block text-[13px] font-medium text-gray-500">
-              Dari Tanggal
-            </label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="mt-1.5 block rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-[13px] focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-[13px] font-medium text-gray-500">
-              Sampai Tanggal
-            </label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="mt-1.5 block rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-[13px] focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-          <button
-            onClick={() => {
-              setPage(1);
-              fetchData();
-            }}
-            className="inline-flex items-center gap-2 rounded-xl bg-gray-100 px-4 py-2 text-[13px] font-medium text-gray-600 hover:bg-gray-200 transition-colors"
-          >
-            <Search className="h-4 w-4" />
-            Filter
-          </button>
-          <button
-            onClick={handleFetchFromDevice}
-            disabled={fetching}
-            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-[13px] font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm shadow-blue-200"
-          >
-            <Download className="h-4 w-4" />
-            {fetching ? "Mengirim..." : "Ambil dari Mesin"}
-          </button>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-[13px]">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50/50">
-                <th className="px-4 py-3 font-medium text-gray-400">PIN</th>
-                <th className="px-4 py-3 font-medium text-gray-400">
-                  Waktu Scan
-                </th>
-                <th className="px-4 py-3 font-medium text-gray-400">Status</th>
-                <th className="px-4 py-3 font-medium text-gray-400">
-                  Verifikasi
-                </th>
-                <th className="px-4 py-3 font-medium text-gray-400">
-                  Status Scan
-                </th>
-                <th className="px-4 py-3 font-medium text-gray-400">Sumber</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {loading ? (
-                <tr>
-                  <td
-                    colSpan={6}
-                    className="px-4 py-12 text-center text-gray-300"
-                  >
-                    <div className="flex items-center justify-center gap-2">
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-                      Memuat...
-                    </div>
-                  </td>
-                </tr>
-              ) : data.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={6}
-                    className="px-4 py-12 text-center text-gray-300"
-                  >
-                    Tidak ada data ditemukan
-                  </td>
-                </tr>
-              ) : (
-                data.map((row) => (
-                  <tr
-                    key={row.id}
-                    className="hover:bg-gray-50/50 transition-colors"
-                  >
-                    <td className="px-4 py-3 font-mono text-gray-700">
-                      {row.employeePin}
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">
-                      {formatDateTime(row.scanTime)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex rounded-lg px-2.5 py-1 text-[11px] font-semibold ${
-                          row.status === "IN"
-                            ? "bg-emerald-50 text-emerald-700"
-                            : row.status === "OUT"
-                              ? "bg-amber-50 text-amber-700"
-                              : "bg-gray-100 text-gray-600"
-                        }`}
-                      >
-                        {row.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">
-                      {row.verifyMethod
-                        ? getVerifyMethod(row.verifyMethod)
-                        : "-"}
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">
-                      {row.statusScan != null
-                        ? getStatusScan(row.statusScan)
-                        : "-"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex rounded-lg px-2.5 py-1 text-[11px] font-semibold ${
-                          row.source === "realtime"
-                            ? "bg-blue-50 text-blue-700"
-                            : "bg-gray-100 text-gray-500"
-                        }`}
-                      >
-                        {row.source}
-                      </span>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+      <Card className="overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>PIN</TableHead>
+              <TableHead>Waktu Scan</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Verifikasi</TableHead>
+              <TableHead>Status Scan</TableHead>
+              <TableHead>Sumber</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={6} className="h-48 text-center text-muted-foreground">
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                    Memuat...
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : data.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="h-48 text-center text-muted-foreground">
+                  Tidak ada data ditemukan
+                </TableCell>
+              </TableRow>
+            ) : (
+              data.map((row) => (
+                <TableRow key={row.id}>
+                  <TableCell className="font-mono">{row.employeePin}</TableCell>
+                  <TableCell>{formatDateTime(row.scanTime)}</TableCell>
+                  <TableCell>
+                    <span
+                      className={`inline-flex rounded-lg px-2.5 py-1 text-[11px] font-semibold ${
+                        row.status === "IN"
+                          ? "bg-emerald-50 text-emerald-700"
+                          : row.status === "OUT"
+                            ? "bg-amber-50 text-amber-700"
+                            : "bg-gray-100 text-gray-600"
+                      }`}
+                    >
+                      {row.status}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    {row.verifyMethod
+                      ? getVerifyMethod(row.verifyMethod)
+                      : "-"}
+                  </TableCell>
+                  <TableCell>
+                    {row.statusScan != null
+                      ? getStatusScan(row.statusScan)
+                      : "-"}
+                  </TableCell>
+                  <TableCell>
+                    <span
+                      className={`inline-flex rounded-lg px-2.5 py-1 text-[11px] font-semibold ${
+                        row.source === "realtime"
+                          ? "bg-blue-50 text-blue-700"
+                          : "bg-gray-100 text-gray-500"
+                      }`}
+                    >
+                      {row.source}
+                    </span>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
         {totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-gray-100 px-4 py-3 bg-gray-50/30">
-            <span className="text-[13px] text-gray-400">
+          <div className="flex items-center justify-between border-t px-4 py-3">
+            <span className="text-sm text-muted-foreground">
               Total {total.toLocaleString("id-ID")} data
             </span>
             <div className="flex items-center gap-1">
-              <button
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => setPage(Math.max(1, page - 1))}
                 disabled={page === 1}
-                className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 disabled:opacity-30 transition-colors"
               >
                 <ChevronLeft className="h-4 w-4" />
-              </button>
-              <span className="px-3 py-1 text-[13px] font-medium text-gray-600">
+              </Button>
+              <span className="px-3 py-1 text-sm font-medium">
                 {page} / {totalPages}
               </span>
-              <button
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => setPage(Math.min(totalPages, page + 1))}
                 disabled={page === totalPages}
-                className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 disabled:opacity-30 transition-colors"
               >
                 <ChevronRight className="h-4 w-4" />
-              </button>
+              </Button>
             </div>
           </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

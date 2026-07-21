@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Briefcase, Plus, Pencil, Trash2, X, Search } from "lucide-react";
+import { Briefcase, Plus, Pencil, Trash2, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 interface AturanItem { id: string; kode: string; name: string; }
 interface JamKerjaItem {
@@ -38,7 +43,7 @@ export default function JamKerjaPage() {
   useEffect(() => { fetchAturan(); }, []);
   useEffect(() => { fetchData(); }, [tab]);
 
-  const openAdd = () => { setForm({ ...defaultForm, type: tab as any }); setModal({}); };
+  const openAdd = () => { setForm({ ...defaultForm, type: tab }); setModal({}); };
   const openEdit = (item: JamKerjaItem) => {
     setForm({
       kode: item.kode, name: item.name, type: item.type, aturanKode: item.aturanKode, hariKerja: item.hariKerja,
@@ -104,139 +109,239 @@ export default function JamKerjaPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex gap-1 rounded-xl bg-gray-100 p-1">
-            <button onClick={() => setTab("tetap")} className={`rounded-lg px-4 py-1.5 text-[13px] font-medium transition-all ${tab === "tetap" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>Tetap</button>
-            <button onClick={() => setTab("fleksibel")} className={`rounded-lg px-4 py-1.5 text-[13px] font-medium transition-all ${tab === "fleksibel" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>Fleksibel</button>
-          </div>
-          <div className="flex-1 min-w-[150px]">
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === "Enter" && fetchData()} placeholder="Cari..." className="block w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-[13px] focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
-          </div>
-          <button onClick={fetchData} className="inline-flex items-center gap-2 rounded-xl bg-gray-100 px-4 py-2 text-[13px] font-medium text-gray-600 hover:bg-gray-200"><Search className="h-4 w-4" />Cari</button>
-          <button onClick={openAdd} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-[13px] font-medium text-white hover:bg-blue-700 shadow-sm shadow-blue-200"><Plus className="h-4 w-4" />Tambah</button>
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-[13px]">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50/50">
-                <th className="px-4 py-3 font-medium text-gray-400">Kode</th>
-                <th className="px-4 py-3 font-medium text-gray-400">Nama</th>
-                <th className="px-4 py-3 font-medium text-gray-400">Aturan</th>
-                {tab === "tetap" && <><th className="px-4 py-3 font-medium text-gray-400">Jam Kerja</th><th className="px-4 py-3 text-center font-medium text-gray-400">Istirahat</th><th className="px-4 py-3 text-center font-medium text-gray-400">Lembur</th></>}
-                {tab === "fleksibel" && <><th className="px-4 py-3 font-medium text-gray-400">Durasi Maks</th><th className="px-4 py-3 font-medium text-gray-400">Cutoff</th></>}
-                <th className="px-4 py-3 text-center font-medium text-gray-400">Hari Kerja</th>
-                <th className="px-4 py-3 text-center font-medium text-gray-400">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {loading ? <tr><td colSpan={8} className="px-4 py-12 text-center text-gray-300">Memuat...</td></tr>
-              : data.length === 0 ? <tr><td colSpan={8} className="px-4 py-12 text-center text-gray-300">Belum ada data.</td></tr>
-              : data.map(item => (
-                <tr key={item.id} className="hover:bg-gray-50/50">
-                  <td className="px-4 py-3 font-mono text-gray-700 font-medium">{item.kode}</td>
-                  <td className="px-4 py-3 text-gray-900">{item.name}</td>
-                  <td className="px-4 py-3 text-gray-500 text-[12px]">{getAturanName(item.aturanKode)}</td>
-                  {tab === "tetap" && <>
-                    <td className="px-4 py-3 font-mono text-gray-700">{item.startTime} - {item.endTime}</td>
-                    <td className="px-4 py-3 text-center text-gray-600">{item.istirahatAktif ? `${item.istirahatStart}-${item.istirahatEnd}` : "-"}</td>
-                    <td className="px-4 py-3 text-center text-gray-600">{item.lemburAktif ? "Ya" : "Tidak"}</td>
-                  </>}
-                  {tab === "fleksibel" && <>
-                    <td className="px-4 py-3 text-gray-700">{item.maxDuration} mnt</td>
-                    <td className="px-4 py-3 font-mono text-gray-700">{item.cutoffStart} - {item.cutoffEnd}</td>
-                  </>}
-                  <td className="px-4 py-3 text-center text-gray-700">{item.hariKerja} hari</td>
-                  <td className="px-4 py-3 text-center">
-                    <div className="flex items-center justify-center gap-1">
-                      <button onClick={() => openEdit(item)} className="rounded-lg p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-600"><Pencil className="h-3.5 w-3.5" /></button>
-                      <button onClick={() => handleDelete(item)} className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"><Trash2 className="h-3.5 w-3.5" /></button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setModal(null)}>
-          <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-xl" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-bold text-gray-900">{modal.item ? "Edit Jam Kerja" : "Tambah Jam Kerja"} ({form.type === "tetap" ? "Tetap" : "Fleksibel"})</h3>
-              <button onClick={() => setModal(null)} className="rounded-lg p-1 text-gray-400 hover:bg-gray-100"><X className="h-4 w-4" /></button>
+      <Card>
+        <CardContent className="p-5 pt-5">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex gap-1 rounded-xl bg-gray-100 p-1">
+              <Button
+                variant={tab === "tetap" ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setTab("tetap")}
+                className={tab === "tetap" ? "bg-white text-gray-900 shadow-sm hover:bg-white" : "text-gray-500 hover:text-gray-700"}
+              >
+                Tetap
+              </Button>
+              <Button
+                variant={tab === "fleksibel" ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setTab("fleksibel")}
+                className={tab === "fleksibel" ? "bg-white text-gray-900 shadow-sm hover:bg-white" : "text-gray-500 hover:text-gray-700"}
+              >
+                Fleksibel
+              </Button>
             </div>
-            <div className="space-y-3">
+            <div className="flex-1 min-w-[150px]">
+              <Input
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && fetchData()}
+                placeholder="Cari..."
+                className="w-full"
+              />
+            </div>
+            <Button variant="outline" size="sm" onClick={fetchData}>
+              <Search className="h-4 w-4" />
+              Cari
+            </Button>
+            <Button size="sm" onClick={openAdd}>
+              <Plus className="h-4 w-4" />
+              Tambah
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Kode</TableHead>
+              <TableHead>Nama</TableHead>
+              <TableHead>Aturan</TableHead>
+              {tab === "tetap" && (
+                <>
+                  <TableHead>Jam Kerja</TableHead>
+                  <TableHead className="text-center">Istirahat</TableHead>
+                  <TableHead className="text-center">Lembur</TableHead>
+                </>
+              )}
+              {tab === "fleksibel" && (
+                <>
+                  <TableHead>Durasi Maks</TableHead>
+                  <TableHead>Cutoff</TableHead>
+                </>
+              )}
+              <TableHead className="text-center">Hari Kerja</TableHead>
+              <TableHead className="text-center">Aksi</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={9} className="py-12 text-center text-gray-300">Memuat...</TableCell>
+              </TableRow>
+            ) : data.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={9} className="py-12 text-center text-gray-300">Belum ada data.</TableCell>
+              </TableRow>
+            ) : data.map(item => (
+              <TableRow key={item.id}>
+                <TableCell className="font-mono font-medium text-gray-700">{item.kode}</TableCell>
+                <TableCell className="text-gray-900">{item.name}</TableCell>
+                <TableCell className="text-[12px] text-gray-500">{getAturanName(item.aturanKode)}</TableCell>
+                {tab === "tetap" && (
+                  <>
+                    <TableCell className="font-mono text-gray-700">{item.startTime} - {item.endTime}</TableCell>
+                    <TableCell className="text-center text-gray-600">{item.istirahatAktif ? `${item.istirahatStart}-${item.istirahatEnd}` : "-"}</TableCell>
+                    <TableCell className="text-center text-gray-600">{item.lemburAktif ? "Ya" : "Tidak"}</TableCell>
+                  </>
+                )}
+                {tab === "fleksibel" && (
+                  <>
+                    <TableCell className="text-gray-700">{item.maxDuration} mnt</TableCell>
+                    <TableCell className="font-mono text-gray-700">{item.cutoffStart} - {item.cutoffEnd}</TableCell>
+                  </>
+                )}
+                <TableCell className="text-center text-gray-700">{item.hariKerja}</TableCell>
+                <TableCell className="text-center">
+                  <div className="flex items-center justify-center gap-1">
+                    <Button variant="ghost" size="icon" onClick={() => openEdit(item)}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDelete(item)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
+
+      <Dialog open={modal !== null} onOpenChange={(open) => { if (!open) setModal(null); }}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {modal?.item ? "Edit Jam Kerja" : "Tambah Jam Kerja"} ({form.type === "tetap" ? "Tetap" : "Fleksibel"})
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[13px] font-medium text-gray-500">Kode</label>
+                <Input type="text" value={form.kode} onChange={e => setForm(p => ({ ...p, kode: e.target.value }))} className="mt-1" />
+              </div>
+              <div>
+                <label className="block text-[13px] font-medium text-gray-500">Nama</label>
+                <Input type="text" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} className="mt-1" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[13px] font-medium text-gray-500">Aturan</label>
+                <select value={form.aturanKode} onChange={e => setForm(p => ({ ...p, aturanKode: e.target.value }))} className="mt-1 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring">
+                  <option value="">Pilih Aturan</option>
+                  {aturan.map(a => <option key={a.id} value={a.kode}>{a.kode} - {a.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[13px] font-medium text-gray-500">Hari Kerja</label>
+                <Input type="number" min={1} max={7} value={form.hariKerja} onChange={e => setForm(p => ({ ...p, hariKerja: Number(e.target.value) }))} className="mt-1" />
+              </div>
+            </div>
+
+            {form.type === "tetap" && <>
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="block text-[13px] font-medium text-gray-500">Kode</label><input type="text" value={form.kode} onChange={e => setForm(p => ({ ...p, kode: e.target.value }))} className="mt-1 block w-full rounded-xl border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
-                <div><label className="block text-[13px] font-medium text-gray-500">Nama</label><input type="text" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} className="mt-1 block w-full rounded-xl border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
+                <div>
+                  <label className="block text-[13px] font-medium text-gray-500">Jam Mulai</label>
+                  <Input type="time" value={form.startTime} onChange={e => setForm(p => ({ ...p, startTime: e.target.value }))} className="mt-1" />
+                </div>
+                <div>
+                  <label className="block text-[13px] font-medium text-gray-500">Jam Selesai</label>
+                  <Input type="time" value={form.endTime} onChange={e => setForm(p => ({ ...p, endTime: e.target.value }))} className="mt-1" />
+                </div>
+              </div>
+              {form.startTime && form.endTime && <p className="text-[12px] text-gray-400">Durasi Maksimal: <strong>{durasi} menit</strong> ({Math.floor(durasi / 60)} jam {durasi % 60} menit)</p>}
+
+              <div className="flex items-center gap-2 mt-2">
+                <input type="checkbox" id="istirahat" checked={form.istirahatAktif} onChange={e => setForm(p => ({ ...p, istirahatAktif: e.target.checked }))} className="rounded" />
+                <label htmlFor="istirahat" className="text-[13px] font-medium text-gray-600">Aktifkan Istirahat</label>
+              </div>
+              {form.istirahatAktif && <div className="grid grid-cols-2 gap-3 ml-5">
+                <div>
+                  <label className="block text-[13px] font-medium text-gray-500">Istirahat Mulai</label>
+                  <Input type="time" value={form.istirahatStart} onChange={e => setForm(p => ({ ...p, istirahatStart: e.target.value }))} className="mt-1" />
+                </div>
+                <div>
+                  <label className="block text-[13px] font-medium text-gray-500">Istirahat Selesai</label>
+                  <Input type="time" value={form.istirahatEnd} onChange={e => setForm(p => ({ ...p, istirahatEnd: e.target.value }))} className="mt-1" />
+                </div>
+              </div>}
+
+              <div className="flex items-center gap-2 mt-2">
+                <input type="checkbox" id="lembur" checked={form.lemburAktif} onChange={e => setForm(p => ({ ...p, lemburAktif: e.target.checked }))} className="rounded" />
+                <label htmlFor="lembur" className="text-[13px] font-medium text-gray-600">Aktifkan Lembur</label>
+              </div>
+              {form.lemburAktif && <div className="grid grid-cols-2 gap-3 ml-5">
+                <div>
+                  <label className="block text-[13px] font-medium text-gray-500">Lembur Awal Min (mnt)</label>
+                  <Input type="number" value={form.lemburAwalMin} onChange={e => setForm(p => ({ ...p, lemburAwalMin: Number(e.target.value) }))} className="mt-1" />
+                </div>
+                <div>
+                  <label className="block text-[13px] font-medium text-gray-500">Lembur Awal Max (mnt)</label>
+                  <Input type="number" value={form.lemburAwalMax} onChange={e => setForm(p => ({ ...p, lemburAwalMax: Number(e.target.value) }))} className="mt-1" />
+                </div>
+                <div>
+                  <label className="block text-[13px] font-medium text-gray-500">Lembur Akhir Min (mnt)</label>
+                  <Input type="number" value={form.lemburAkhirMin} onChange={e => setForm(p => ({ ...p, lemburAkhirMin: Number(e.target.value) }))} className="mt-1" />
+                </div>
+                <div>
+                  <label className="block text-[13px] font-medium text-gray-500">Lembur Akhir Max (mnt)</label>
+                  <Input type="number" value={form.lemburAkhirMax} onChange={e => setForm(p => ({ ...p, lemburAkhirMax: Number(e.target.value) }))} className="mt-1" />
+                </div>
+              </div>}
+            </>}
+
+            {form.type === "fleksibel" && <>
+              <div>
+                <label className="block text-[13px] font-medium text-gray-500">Durasi Maksimal Bekerja (menit)</label>
+                <Input type="number" value={form.maxDuration} onChange={e => setForm(p => ({ ...p, maxDuration: Number(e.target.value) }))} className="mt-1" />
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="block text-[13px] font-medium text-gray-500">Aturan</label>
-                  <select value={form.aturanKode} onChange={e => setForm(p => ({ ...p, aturanKode: e.target.value }))} className="mt-1 block w-full rounded-xl border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                    <option value="">Pilih Aturan</option>
-                    {aturan.map(a => <option key={a.id} value={a.kode}>{a.kode} - {a.name}</option>)}
-                  </select>
+                <div>
+                  <label className="block text-[13px] font-medium text-gray-500">Jam Mulai Cutoff</label>
+                  <Input type="time" value={form.cutoffStart} onChange={e => setForm(p => ({ ...p, cutoffStart: e.target.value }))} className="mt-1" />
                 </div>
-                <div><label className="block text-[13px] font-medium text-gray-500">Hari Kerja (per minggu)</label><input type="number" min={1} max={7} value={form.hariKerja} onChange={e => setForm(p => ({ ...p, hariKerja: Number(e.target.value) }))} className="mt-1 block w-full rounded-xl border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
+                <div>
+                  <label className="block text-[13px] font-medium text-gray-500">Jam Akhir Cutoff</label>
+                  <Input type="time" value={form.cutoffEnd} onChange={e => setForm(p => ({ ...p, cutoffEnd: e.target.value }))} className="mt-1" />
+                </div>
               </div>
 
-              {form.type === "tetap" && <>
-                <div className="grid grid-cols-2 gap-3">
-                  <div><label className="block text-[13px] font-medium text-gray-500">Jam Mulai</label><input type="time" value={form.startTime} onChange={e => setForm(p => ({ ...p, startTime: e.target.value }))} className="mt-1 block w-full rounded-xl border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
-                  <div><label className="block text-[13px] font-medium text-gray-500">Jam Selesai</label><input type="time" value={form.endTime} onChange={e => setForm(p => ({ ...p, endTime: e.target.value }))} className="mt-1 block w-full rounded-xl border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
+              <div className="flex items-center gap-2 mt-2">
+                <input type="checkbox" id="lemburF" checked={form.lemburAktif} onChange={e => setForm(p => ({ ...p, lemburAktif: e.target.checked }))} className="rounded" />
+                <label htmlFor="lemburF" className="text-[13px] font-medium text-gray-600">Aktifkan Lembur</label>
+              </div>
+              {form.lemburAktif && <div className="grid grid-cols-2 gap-3 ml-5">
+                <div>
+                  <label className="block text-[13px] font-medium text-gray-500">Lembur Min (mnt)</label>
+                  <Input type="number" value={form.lemburMin} onChange={e => setForm(p => ({ ...p, lemburMin: Number(e.target.value) }))} className="mt-1" />
                 </div>
-                {form.startTime && form.endTime && <p className="text-[12px] text-gray-400">Durasi Maksimal: <strong>{durasi} menit</strong> ({Math.floor(durasi / 60)} jam {durasi % 60} menit)</p>}
-
-                <div className="flex items-center gap-2 mt-2">
-                  <input type="checkbox" id="istirahat" checked={form.istirahatAktif} onChange={e => setForm(p => ({ ...p, istirahatAktif: e.target.checked }))} className="rounded" />
-                  <label htmlFor="istirahat" className="text-[13px] font-medium text-gray-600">Aktifkan Istirahat</label>
+                <div>
+                  <label className="block text-[13px] font-medium text-gray-500">Lembur Max (mnt)</label>
+                  <Input type="number" value={form.lemburMax} onChange={e => setForm(p => ({ ...p, lemburMax: Number(e.target.value) }))} className="mt-1" />
                 </div>
-                {form.istirahatAktif && <div className="grid grid-cols-2 gap-3 ml-5">
-                  <div><label className="block text-[13px] font-medium text-gray-500">Istirahat Mulai</label><input type="time" value={form.istirahatStart} onChange={e => setForm(p => ({ ...p, istirahatStart: e.target.value }))} className="mt-1 block w-full rounded-xl border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
-                  <div><label className="block text-[13px] font-medium text-gray-500">Istirahat Selesai</label><input type="time" value={form.istirahatEnd} onChange={e => setForm(p => ({ ...p, istirahatEnd: e.target.value }))} className="mt-1 block w-full rounded-xl border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
-                </div>}
-
-                <div className="flex items-center gap-2 mt-2">
-                  <input type="checkbox" id="lembur" checked={form.lemburAktif} onChange={e => setForm(p => ({ ...p, lemburAktif: e.target.checked }))} className="rounded" />
-                  <label htmlFor="lembur" className="text-[13px] font-medium text-gray-600">Aktifkan Lembur</label>
-                </div>
-                {form.lemburAktif && <div className="grid grid-cols-2 gap-3 ml-5">
-                  <div><label className="block text-[13px] font-medium text-gray-500">Lembur Awal Min (mnt)</label><input type="number" value={form.lemburAwalMin} onChange={e => setForm(p => ({ ...p, lemburAwalMin: Number(e.target.value) }))} className="mt-1 block w-full rounded-xl border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
-                  <div><label className="block text-[13px] font-medium text-gray-500">Lembur Awal Max (mnt)</label><input type="number" value={form.lemburAwalMax} onChange={e => setForm(p => ({ ...p, lemburAwalMax: Number(e.target.value) }))} className="mt-1 block w-full rounded-xl border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
-                  <div><label className="block text-[13px] font-medium text-gray-500">Lembur Akhir Min (mnt)</label><input type="number" value={form.lemburAkhirMin} onChange={e => setForm(p => ({ ...p, lemburAkhirMin: Number(e.target.value) }))} className="mt-1 block w-full rounded-xl border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
-                  <div><label className="block text-[13px] font-medium text-gray-500">Lembur Akhir Max (mnt)</label><input type="number" value={form.lemburAkhirMax} onChange={e => setForm(p => ({ ...p, lemburAkhirMax: Number(e.target.value) }))} className="mt-1 block w-full rounded-xl border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
-                </div>}
-              </>}
-
-              {form.type === "fleksibel" && <>
-                <div><label className="block text-[13px] font-medium text-gray-500">Durasi Maksimal Bekerja (menit)</label><input type="number" value={form.maxDuration} onChange={e => setForm(p => ({ ...p, maxDuration: Number(e.target.value) }))} className="mt-1 block w-full rounded-xl border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div><label className="block text-[13px] font-medium text-gray-500">Jam Mulai Cutoff</label><input type="time" value={form.cutoffStart} onChange={e => setForm(p => ({ ...p, cutoffStart: e.target.value }))} className="mt-1 block w-full rounded-xl border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
-                  <div><label className="block text-[13px] font-medium text-gray-500">Jam Akhir Cutoff</label><input type="time" value={form.cutoffEnd} onChange={e => setForm(p => ({ ...p, cutoffEnd: e.target.value }))} className="mt-1 block w-full rounded-xl border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
-                </div>
-
-                <div className="flex items-center gap-2 mt-2">
-                  <input type="checkbox" id="lemburF" checked={form.lemburAktif} onChange={e => setForm(p => ({ ...p, lemburAktif: e.target.checked }))} className="rounded" />
-                  <label htmlFor="lemburF" className="text-[13px] font-medium text-gray-600">Aktifkan Lembur</label>
-                </div>
-                {form.lemburAktif && <div className="grid grid-cols-2 gap-3 ml-5">
-                  <div><label className="block text-[13px] font-medium text-gray-500">Lembur Min (mnt)</label><input type="number" value={form.lemburMin} onChange={e => setForm(p => ({ ...p, lemburMin: Number(e.target.value) }))} className="mt-1 block w-full rounded-xl border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
-                  <div><label className="block text-[13px] font-medium text-gray-500">Lembur Max (mnt)</label><input type="number" value={form.lemburMax} onChange={e => setForm(p => ({ ...p, lemburMax: Number(e.target.value) }))} className="mt-1 block w-full rounded-xl border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
-                </div>}
-              </>}
-            </div>
-            <div className="flex gap-2 justify-end mt-5">
-              <button onClick={() => setModal(null)} className="rounded-xl border border-gray-200 px-4 py-2 text-[13px] font-medium text-gray-600 hover:bg-gray-50">Batal</button>
-              <button onClick={handleSave} disabled={saving} className="rounded-xl bg-blue-600 px-4 py-2 text-[13px] font-medium text-white hover:bg-blue-700 disabled:opacity-50">{saving ? "Menyimpan..." : "Simpan"}</button>
-            </div>
+              </div>}
+            </>}
           </div>
-        </div>
-      )}
+          <div className="flex gap-2 justify-end mt-5">
+            <Button variant="outline" onClick={() => setModal(null)}>Batal</Button>
+            <Button onClick={handleSave} disabled={saving}>{saving ? "Menyimpan..." : "Simpan"}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

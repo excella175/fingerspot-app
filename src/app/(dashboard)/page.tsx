@@ -12,6 +12,8 @@ import {
   Zap,
 } from "lucide-react";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
+import { Card, CardContent } from "@/components/ui/card";
 
 interface Stats {
   totalAttlog: number;
@@ -39,7 +41,7 @@ export default function Dashboard() {
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <div className="flex items-center gap-2 text-sm text-gray-400">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
           Memuat data...
         </div>
@@ -101,8 +103,8 @@ export default function Dashboard() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-xl font-bold text-gray-900">Dashboard</h1>
-        <p className="mt-1 text-sm text-gray-400">
+        <h1 className="text-xl font-bold text-foreground">Dashboard</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Monitoring integrasi Fingerspot Attendance System
         </p>
       </div>
@@ -112,51 +114,57 @@ export default function Dashboard() {
           <Link
             key={card.title}
             href={card.href}
-            className={`group relative overflow-hidden rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md ${card.shadow}`}
+            className={cn("block", card.shadow)}
           >
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-[13px] font-medium text-gray-400">
-                  {card.title}
-                </p>
-                <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900">
-                  {card.value.toLocaleString("id-ID")}
-                </p>
-              </div>
-              <div
-                className={`flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${card.color} shadow-lg`}
-              >
-                <card.icon className="h-5 w-5 text-white" />
-              </div>
-            </div>
-            <div className="mt-3 flex items-center gap-1 text-[11px] font-medium text-gray-300 transition-colors group-hover:text-gray-500">
-              Lihat detail
-              <ArrowUpRight className="h-3 w-3" />
-            </div>
+            <Card className="group overflow-hidden transition-all hover:shadow-md">
+              <CardContent className="p-5">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-[13px] font-medium text-muted-foreground">
+                      {card.title}
+                    </p>
+                    <p className="mt-2 text-3xl font-bold tracking-tight text-foreground">
+                      {card.value.toLocaleString("id-ID")}
+                    </p>
+                  </div>
+                  <div
+                    className={`flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${card.color} shadow-lg`}
+                  >
+                    <card.icon className="h-5 w-5 text-white" />
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center gap-1 text-[11px] font-medium text-muted-foreground/50 transition-colors group-hover:text-muted-foreground">
+                  Lihat detail
+                  <ArrowUpRight className="h-3 w-3" />
+                </div>
+              </CardContent>
+            </Card>
           </Link>
         ))}
       </div>
 
-      <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50">
-            <Zap className="h-5 w-5 text-blue-600" />
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted">
+              <Zap className="h-5 w-5 text-blue-600" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-foreground">
+                Webhook URL
+              </h2>
+              <p className="text-[13px] text-muted-foreground">
+                Set URL ini di dashboard developer.fingerspot.io untuk menerima data real-time
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-sm font-semibold text-gray-900">
-              Webhook URL
-            </h2>
-            <p className="text-[13px] text-gray-400">
-              Set URL ini di dashboard developer.fingerspot.io untuk menerima data real-time
-            </p>
+          <div className="mt-4 rounded-xl bg-muted px-4 py-3 font-mono text-[13px] text-foreground/60">
+            {typeof window !== "undefined"
+              ? `${window.location.origin}/api/webhook/fingerspot`
+              : "/api/webhook/fingerspot"}
           </div>
-        </div>
-        <div className="mt-4 rounded-xl bg-gray-50 border border-gray-100 px-4 py-3 font-mono text-[13px] text-gray-600">
-          {typeof window !== "undefined"
-            ? `${window.location.origin}/api/webhook/fingerspot`
-            : "/api/webhook/fingerspot"}
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

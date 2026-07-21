@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Search, RefreshCw, Users, ChevronLeft, ChevronRight, Pencil, Trash2, X, Download } from "lucide-react";
+import { Search, RefreshCw, Users, ChevronLeft, ChevronRight, Pencil, Trash2, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface UserInfoEntry {
   id: string;
@@ -62,7 +68,6 @@ export default function UserinfoPage() {
       const r = await res.json();
       if (r.success) {
         setSyncStatus("Perintah terkirim! Menunggu data dari mesin...");
-        // Start polling for new data
         if (pollRef.current) clearInterval(pollRef.current);
         let attempts = 0;
         const initialTotal = total;
@@ -71,7 +76,6 @@ export default function UserinfoPage() {
           const res2 = await fetch(`/api/userinfo?page=1&limit=1`);
           const d2 = await res2.json();
           if (d2.total > initialTotal || attempts > 30) {
-            // New data arrived or timeout (30 * 5s = 150s)
             if (pollRef.current) clearInterval(pollRef.current);
             pollRef.current = null;
             setSyncing(false);
@@ -146,126 +150,157 @@ export default function UserinfoPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="flex-1 min-w-[200px]">
-            <label className="block text-[13px] font-medium text-gray-500">Cari PIN atau Nama</label>
-            <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && (setPage(1), fetchData())}
-              placeholder="Ketik PIN atau nama..."
-              className="mt-1.5 block w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-[13px] focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
+      <Card>
+        <CardContent className="p-5">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-[13px] font-medium text-gray-500 mb-1.5">Cari PIN atau Nama</label>
+              <Input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && (setPage(1), fetchData())}
+                placeholder="Ketik PIN atau nama..."
+              />
+            </div>
+            <Button
+              variant="secondary"
+              onClick={() => { setPage(1); fetchData(); }}
+            >
+              <Search className="h-4 w-4 mr-1.5" /> Cari
+            </Button>
+            <Button
+              onClick={handleSync}
+              disabled={syncing}
+            >
+              <RefreshCw className={`h-4 w-4 mr-1.5 ${syncing ? "animate-spin" : ""}`} />
+              {syncing ? "Menunggu data..." : "Ambil Data User dari Mesin"}
+            </Button>
           </div>
-          <button onClick={() => { setPage(1); fetchData(); }}
-            className="inline-flex items-center gap-2 rounded-xl bg-gray-100 px-4 py-2 text-[13px] font-medium text-gray-600 hover:bg-gray-200 transition-colors">
-            <Search className="h-4 w-4" /> Cari
-          </button>
-          <button onClick={handleSync} disabled={syncing}
-            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-[13px] font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm shadow-blue-200">
-            <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
-            {syncing ? "Menunggu data..." : "Ambil Data User dari Mesin"}
-          </button>
-        </div>
-        {syncStatus && (
-          <div className={`mt-3 rounded-xl p-3 text-[13px] ${syncStatus.startsWith("✅") ? "bg-green-50 text-green-700" : syncStatus.startsWith("❌") ? "bg-red-50 text-red-700" : "bg-blue-50 text-blue-700"}`}>
-            {syncStatus}
-          </div>
-        )}
-      </div>
+          {syncStatus && (
+            <div className={`mt-3 rounded-xl p-3 text-[13px] ${
+              syncStatus.startsWith("✅") ? "bg-green-50 text-green-700" :
+              syncStatus.startsWith("❌") ? "bg-red-50 text-red-700" :
+              "bg-blue-50 text-blue-700"
+            }`}>
+              {syncStatus}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-      <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-[13px]">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50/50">
-                <th className="px-4 py-3 font-medium text-gray-400">PIN</th>
-                <th className="px-4 py-3 font-medium text-gray-400">Nama</th>
-                <th className="px-4 py-3 font-medium text-gray-400">Privilege</th>
-                <th className="px-4 py-3 text-center font-medium text-gray-400">Fingerprint</th>
-                <th className="px-4 py-3 text-center font-medium text-gray-400">Face</th>
-                <th className="px-4 py-3 text-center font-medium text-gray-400">RFID</th>
-                <th className="px-4 py-3 font-medium text-gray-400">Device ID</th>
-                <th className="px-4 py-3 text-center font-medium text-gray-400">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {loading ? (
-                <tr><td colSpan={8} className="px-4 py-12 text-center text-gray-300">
+      <Card className="overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>PIN</TableHead>
+              <TableHead>Nama</TableHead>
+              <TableHead>Privilege</TableHead>
+              <TableHead className="text-center">Fingerprint</TableHead>
+              <TableHead className="text-center">Face</TableHead>
+              <TableHead className="text-center">RFID</TableHead>
+              <TableHead>Device ID</TableHead>
+              <TableHead className="text-center">Aksi</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={8} className="h-48 text-center text-muted-foreground">
                   <div className="flex items-center justify-center gap-2">
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" /> Memuat...
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" /> Memuat...
                   </div>
-                </td></tr>
-              ) : data.length === 0 ? (
-                <tr><td colSpan={8} className="px-4 py-12 text-center text-gray-300">
+                </TableCell>
+              </TableRow>
+            ) : data.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={8} className="h-48 text-center text-muted-foreground">
                   Tidak ada data. Klik &quot;Ambil Data User dari Mesin&quot; untuk mengambil data.
-                </td></tr>
-              ) : data.map((row) => (
-                <tr key={row.id} className="hover:bg-gray-50/50 transition-colors">
-                  <td className="px-4 py-3 font-mono text-gray-700">{row.pin}</td>
-                  <td className="px-4 py-3 font-medium text-gray-900">{row.name}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex rounded-lg px-2.5 py-1 text-[11px] font-semibold ${row.privilege === 2 ? "bg-purple-50 text-purple-700" : "bg-gray-100 text-gray-600"}`}>
-                      {getPrivilegeLabel(row.privilege)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-center text-gray-600">{row.finger}</td>
-                  <td className="px-4 py-3 text-center text-gray-600">{row.face}</td>
-                  <td className="px-4 py-3 text-center text-gray-600">{row.rfid}</td>
-                  <td className="px-4 py-3 font-mono text-[11px] text-gray-400">{row.deviceCloudId || "-"}</td>
-                  <td className="px-4 py-3 text-center">
-                    <div className="flex items-center justify-center gap-1">
-                      <button onClick={() => { setEditPin(row.pin); setEditName(row.name); }}
-                        className="rounded-lg p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition-colors" title="Edit nama">
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
-                      <button onClick={() => handleDelete(row.pin)} disabled={deleting === row.pin}
-                        className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-30 transition-colors" title="Hapus user">
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                </TableCell>
+              </TableRow>
+            ) : data.map((row) => (
+              <TableRow key={row.id}>
+                <TableCell className="font-mono">{row.pin}</TableCell>
+                <TableCell className="font-medium">{row.name}</TableCell>
+                <TableCell>
+                  <Badge variant={row.privilege === 2 ? "default" : "secondary"}>
+                    {getPrivilegeLabel(row.privilege)}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-center">{row.finger}</TableCell>
+                <TableCell className="text-center">{row.face}</TableCell>
+                <TableCell className="text-center">{row.rfid}</TableCell>
+                <TableCell className="font-mono text-[11px] text-muted-foreground">{row.deviceCloudId || "-"}</TableCell>
+                <TableCell className="text-center">
+                  <div className="flex items-center justify-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => { setEditPin(row.pin); setEditName(row.name); }}
+                      title="Edit nama"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(row.pin)}
+                      disabled={deleting === row.pin}
+                      title="Hapus user"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
         {totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-gray-100 px-4 py-3 bg-gray-50/30">
-            <span className="text-[13px] text-gray-400">Total {total.toLocaleString("id-ID")} data</span>
+          <div className="flex items-center justify-between border-t px-4 py-3">
+            <span className="text-sm text-muted-foreground">Total {total.toLocaleString("id-ID")} data</span>
             <div className="flex items-center gap-1">
-              <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1}
-                className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 disabled:opacity-30"><ChevronLeft className="h-4 w-4" /></button>
-              <span className="px-3 py-1 text-[13px] font-medium text-gray-600">{page} / {totalPages}</span>
-              <button onClick={() => setPage(Math.min(totalPages, page + 1))} disabled={page === totalPages}
-                className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 disabled:opacity-30"><ChevronRight className="h-4 w-4" /></button>
+              <Button variant="ghost" size="icon" onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="px-3 py-1 text-sm font-medium">{page} / {totalPages}</span>
+              <Button variant="ghost" size="icon" onClick={() => setPage(Math.min(totalPages, page + 1))} disabled={page === totalPages}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
             </div>
           </div>
         )}
-      </div>
+      </Card>
 
-      {editPin && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setEditPin(null)}>
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-bold text-gray-900">Edit Nama User</h3>
-              <button onClick={() => setEditPin(null)} className="rounded-lg p-1 text-gray-400 hover:bg-gray-100"><X className="h-4 w-4" /></button>
+      <Dialog open={!!editPin} onOpenChange={(open) => { if (!open) setEditPin(null); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Edit Nama User</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-[13px] font-medium text-muted-foreground mb-1">PIN</label>
+              <p className="font-mono text-sm">{editPin}</p>
             </div>
-            <div className="mb-1">
-              <label className="block text-[13px] font-medium text-gray-500">PIN</label>
-              <p className="mt-0.5 font-mono text-sm text-gray-900">{editPin}</p>
-            </div>
-            <div className="mb-5">
-              <label className="block text-[13px] font-medium text-gray-500">Nama</label>
-              <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)}
+            <div>
+              <label className="block text-[13px] font-medium text-muted-foreground mb-1">Nama</label>
+              <Input
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleEdit()}
-                className="mt-1.5 block w-full rounded-xl border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" autoFocus />
+                autoFocus
+              />
             </div>
             <div className="flex gap-2 justify-end">
-              <button onClick={() => setEditPin(null)} className="rounded-xl border border-gray-200 px-4 py-2 text-[13px] font-medium text-gray-600 hover:bg-gray-50">Batal</button>
-              <button onClick={handleEdit} disabled={saving || !editName.trim()} className="rounded-xl bg-blue-600 px-4 py-2 text-[13px] font-medium text-white hover:bg-blue-700 disabled:opacity-50">{saving ? "Menyimpan..." : "Simpan"}</button>
+              <Button variant="outline" onClick={() => setEditPin(null)}>Batal</Button>
+              <Button onClick={handleEdit} disabled={saving || !editName.trim()}>
+                {saving ? "Menyimpan..." : "Simpan"}
+              </Button>
             </div>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

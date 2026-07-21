@@ -3,6 +3,18 @@
 import { useEffect, useState } from "react";
 import { Plus, Pencil, Trash2, Search } from "lucide-react";
 import toast from "react-hot-toast";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface MasterIzinCuti {
   id: string;
@@ -120,135 +132,158 @@ export default function MasterIzinCutiPage() {
           <h1 className="text-xl font-bold text-gray-900">Master Izin & Cuti</h1>
           <p className="text-sm text-gray-500">Kelola jenis izin dan cuti karyawan</p>
         </div>
-        <button onClick={openAdd} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700">
-          <Plus className="h-4 w-4" /> Tambah Izin / Cuti
-        </button>
+        <Button onClick={openAdd}>
+          <Plus className="h-4 w-4 mr-1.5" /> Tambah Izin / Cuti
+        </Button>
       </div>
 
-      <div className="mb-4 flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-2.5 shadow-sm">
-        <Search className="h-4 w-4 text-gray-400" />
-        <input className="flex-1 border-0 bg-transparent text-sm outline-none placeholder:text-gray-400" placeholder="Cari izin / cuti..." value={search} onChange={(e) => setSearch(e.target.value)} />
-      </div>
+      <Card className="mb-4">
+        <CardContent className="flex items-center gap-3 px-4 py-2.5">
+          <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+          <Input
+            placeholder="Cari izin / cuti..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="border-0 bg-transparent px-0 shadow-none focus-visible:ring-0 placeholder:text-muted-foreground"
+          />
+        </CardContent>
+      </Card>
 
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+      <Card>
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-gray-100 bg-gray-50/50">
-              <tr>
-                <th className="px-4 py-3 font-semibold text-gray-600">Nama</th>
-                <th className="px-4 py-3 font-semibold text-gray-600">Tipe</th>
-                <th className="px-4 py-3 font-semibold text-gray-600">Kuota</th>
-                <th className="px-4 py-3 font-semibold text-gray-600">Masa Kerja (Bln)</th>
-                <th className="px-4 py-3 font-semibold text-gray-600">Atur Pengajuan</th>
-                <th className="px-4 py-3 font-semibold text-gray-600">Batas</th>
-                <th className="px-4 py-3 font-semibold text-gray-600">Status Absensi</th>
-                <th className="px-4 py-3 font-semibold text-gray-600">Jenis Kelamin</th>
-                <th className="px-4 py-3 font-semibold text-gray-600">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nama</TableHead>
+                <TableHead>Tipe</TableHead>
+                <TableHead>Kuota</TableHead>
+                <TableHead>Masa Kerja (Bln)</TableHead>
+                <TableHead>Atur Pengajuan</TableHead>
+                <TableHead>Batas</TableHead>
+                <TableHead>Status Absensi</TableHead>
+                <TableHead>Jenis Kelamin</TableHead>
+                <TableHead>Aksi</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {loading ? (
-                <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-400">Memuat...</td></tr>
+                <TableRow>
+                  <TableCell colSpan={9} className="h-32 text-center text-muted-foreground">
+                    Memuat...
+                  </TableCell>
+                </TableRow>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-400">Belum ada data</td></tr>
+                <TableRow>
+                  <TableCell colSpan={9} className="h-32 text-center text-muted-foreground">
+                    Belum ada data
+                  </TableCell>
+                </TableRow>
               ) : filtered.map((item) => (
-                <tr key={item.id} className="hover:bg-gray-50/50">
-                  <td className="px-4 py-3 font-medium text-gray-900">{item.nama}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${item.tipe === "cuti" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}`}>
+                <TableRow key={item.id}>
+                  <TableCell className="font-medium">{item.nama}</TableCell>
+                  <TableCell>
+                    <Badge variant={item.tipe === "izin" ? "secondary" : "default"}>
                       {item.tipe.toUpperCase()}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">{item.kuota}</td>
-                  <td className="px-4 py-3 text-gray-600">{item.masaKerja}</td>
-                  <td className="px-4 py-3 text-gray-600">{item.aturPengajuan === 0 ? "Mendadak" : `H-${item.aturPengajuan}`}</td>
-                  <td className="px-4 py-3 text-gray-600">{item.batasPengajuan} hari</td>
-                  <td className="px-4 py-3 text-gray-600">{item.statusAbsensi}</td>
-                  <td className="px-4 py-3 capitalize text-gray-600">{item.jenisKelamin}</td>
-                  <td className="px-4 py-3">
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{item.kuota}</TableCell>
+                  <TableCell>{item.masaKerja}</TableCell>
+                  <TableCell>{item.aturPengajuan === 0 ? "Mendadak" : `H-${item.aturPengajuan}`}</TableCell>
+                  <TableCell>{item.batasPengajuan} hari</TableCell>
+                  <TableCell>{item.statusAbsensi}</TableCell>
+                  <TableCell className="capitalize">{item.jenisKelamin}</TableCell>
+                  <TableCell>
                     <div className="flex items-center gap-2">
-                      <button onClick={() => openEdit(item)} className="rounded-lg p-1.5 text-gray-400 transition hover:bg-blue-50 hover:text-blue-600"><Pencil className="h-4 w-4" /></button>
-                      <button onClick={() => handleDelete(item.id)} className="rounded-lg p-1.5 text-gray-400 transition hover:bg-red-50 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
+                      <Button variant="ghost" size="icon" onClick={() => openEdit(item)} className="text-muted-foreground hover:text-blue-600 hover:bg-blue-50">
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(item.id)} className="text-muted-foreground hover:text-red-600 hover:bg-red-50">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
-      </div>
+      </Card>
 
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-2xl border border-gray-200 bg-white p-6 shadow-xl">
-            <h2 className="mb-4 text-lg font-bold text-gray-900">{editItem ? "Edit Izin / Cuti" : "Tambah Izin / Cuti"}</h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
+      <Dialog open={showModal} onOpenChange={setShowModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editItem ? "Edit Izin / Cuti" : "Tambah Izin / Cuti"}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Nama Izin *</label>
+              <Input value={form.nama} onChange={(e) => setForm({ ...form, nama: e.target.value })} required />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Tipe *</label>
+              <select value={form.tipe} onChange={(e) => setForm({ ...form, tipe: e.target.value })} className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                <option value="izin">Izin</option>
+                <option value="cuti">Cuti</option>
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Nama Izin *</label>
-                <input value={form.nama} onChange={(e) => setForm({ ...form, nama: e.target.value })} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" required />
+                <label className="mb-1 block text-sm font-medium text-gray-700">Kuota Izin *</label>
+                <Input type="number" min={1} value={form.kuota} onChange={(e) => setForm({ ...form, kuota: parseInt(e.target.value) || 1 })} />
+                <p className="mt-0.5 text-[11px] text-muted-foreground">Periode 1 bulan</p>
               </div>
-
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Tipe *</label>
-                <select value={form.tipe} onChange={(e) => setForm({ ...form, tipe: e.target.value })} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400">
-                  <option value="izin">Izin</option>
-                  <option value="cuti">Cuti</option>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Masa Kerja (Bulan) *</label>
+                <Input type="number" min={1} value={form.masaKerja} onChange={(e) => setForm({ ...form, masaKerja: parseInt(e.target.value) || 1 })} />
+                <p className="mt-0.5 text-[11px] text-muted-foreground">Minimal masa kerja</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Atur Pengajuan *</label>
+                <Input type="number" min={0} value={form.aturPengajuan} onChange={(e) => setForm({ ...form, aturPengajuan: parseInt(e.target.value) || 0 })} />
+                <p className="mt-0.5 text-[11px] text-muted-foreground">0 = mendadak</p>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Batas Satu Pengajuan *</label>
+                <Input type="number" min={1} value={form.batasPengajuan} onChange={(e) => setForm({ ...form, batasPengajuan: parseInt(e.target.value) || 1 })} />
+                <p className="mt-0.5 text-[11px] text-muted-foreground">Maks hari per pengajuan</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Status Absensi</label>
+                <select value={form.statusAbsensi} onChange={(e) => setForm({ ...form, statusAbsensi: e.target.value })} className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                  {statusAbsensiOptions.map((opt) => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
                 </select>
               </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Kuota Izin *</label>
-                  <input type="number" min={1} value={form.kuota} onChange={(e) => setForm({ ...form, kuota: parseInt(e.target.value) || 1 })} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
-                  <p className="mt-0.5 text-[11px] text-gray-400">Periode 1 bulan</p>
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Masa Kerja (Bulan) *</label>
-                  <input type="number" min={1} value={form.masaKerja} onChange={(e) => setForm({ ...form, masaKerja: parseInt(e.target.value) || 1 })} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
-                  <p className="mt-0.5 text-[11px] text-gray-400">Minimal masa kerja</p>
-                </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Jenis Kelamin</label>
+                <select value={form.jenisKelamin} onChange={(e) => setForm({ ...form, jenisKelamin: e.target.value })} className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                  <option value="semua">Semua Jenis Kelamin</option>
+                  <option value="laki-laki">Laki-laki</option>
+                  <option value="perempuan">Perempuan</option>
+                </select>
               </div>
+            </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Atur Pengajuan *</label>
-                  <input type="number" min={0} value={form.aturPengajuan} onChange={(e) => setForm({ ...form, aturPengajuan: parseInt(e.target.value) || 0 })} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
-                  <p className="mt-0.5 text-[11px] text-gray-400">0 = mendadak</p>
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Batas Satu Pengajuan *</label>
-                  <input type="number" min={1} value={form.batasPengajuan} onChange={(e) => setForm({ ...form, batasPengajuan: parseInt(e.target.value) || 1 })} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
-                  <p className="mt-0.5 text-[11px] text-gray-400">Maks hari per pengajuan</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Status Absensi</label>
-                  <select value={form.statusAbsensi} onChange={(e) => setForm({ ...form, statusAbsensi: e.target.value })} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400">
-                    {statusAbsensiOptions.map((opt) => (
-                      <option key={opt} value={opt}>{opt}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Jenis Kelamin</label>
-                  <select value={form.jenisKelamin} onChange={(e) => setForm({ ...form, jenisKelamin: e.target.value })} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400">
-                    <option value="semua">Semua Jenis Kelamin</option>
-                    <option value="laki-laki">Laki-laki</option>
-                    <option value="perempuan">Perempuan</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-2">
-                <button type="button" onClick={() => setShowModal(false)} className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50">Batal</button>
-                <button type="submit" className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700">Simpan</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            <div className="flex justify-end gap-3 pt-2">
+              <Button type="button" variant="outline" onClick={() => setShowModal(false)}>
+                Batal
+              </Button>
+              <Button type="submit">
+                Simpan
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

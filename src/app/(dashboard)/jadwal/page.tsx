@@ -1,8 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CalendarDays, Plus, Pencil, Trash2, X, Search, Download, Upload, ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarDays, Plus, Pencil, Trash2, Search, Download, Upload } from "lucide-react";
 import * as XLSX from "xlsx";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 
 interface JamKerjaItem { id: string; kode: string; name: string; type: string; aturanKode: string; startTime?: string; endTime?: string; }
 interface UserItem { pin: string; name: string; }
@@ -17,11 +23,9 @@ const DAYS_FULL = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu
 export default function JadwalPage() {
   const [tab, setTab] = useState<"auto" | "manual">("auto");
 
-  // Shared
   const [jamKerja, setJamKerja] = useState<JamKerjaItem[]>([]);
   const [users, setUsers] = useState<UserItem[]>([]);
 
-  // Auto
   const [autoList, setAutoList] = useState<JadwalAutoItem[]>([]);
   const [autoLoading, setAutoLoading] = useState(true);
   const [autoModal, setAutoModal] = useState(false);
@@ -29,7 +33,6 @@ export default function JadwalPage() {
   const [editAutoId, setEditAutoId] = useState<string | null>(null);
   const [savingAuto, setSavingAuto] = useState(false);
 
-  // Manual
   const [manualData, setManualData] = useState<JadwalManualItem[]>([]);
   const [manualLoading, setManualLoading] = useState(true);
   const [manualMonth, setManualMonth] = useState(new Date().getMonth() + 1);
@@ -65,13 +68,9 @@ export default function JadwalPage() {
   const getJKName = (kode: string) => jamKerja.find(j => j.kode === kode)?.name || kode;
   const getJK = (kode: string) => jamKerja.find(j => j.kode === kode);
 
-  // Get schedule for an employee on a specific date
   const getScheduleForDate = (pin: string, dateStr: string): { jamKerjaKode: string; source: "manual" | "auto" | "none"; startTime?: string; endTime?: string } => {
-    // 1. Check manual
     const manual = manualData.find(m => m.employeePin === pin && m.date?.slice(0, 10) === dateStr);
     if (manual) return { jamKerjaKode: manual.jamKerjaKode, source: "manual", startTime: manual.startTime, endTime: manual.endTime };
-
-    // 2. Check auto
     const dayOfWeek = new Date(dateStr).getDay();
     for (const auto of autoList) {
       const isAssigned = auto.employees.some(e => e.employeePin === pin);
@@ -79,19 +78,15 @@ export default function JadwalPage() {
       const day = auto.days.find(d => d.dayOfWeek === dayOfWeek);
       if (day && day.jamKerjaKode) return { jamKerjaKode: day.jamKerjaKode, source: "auto" };
     }
-
     return { jamKerjaKode: "", source: "none" };
   };
 
-  // Build a combined list of employee-date entries for the month
   const buildManualView = () => {
     const daysInMonth = new Date(manualYear, manualMonth, 0).getDate();
     const rows: { pin: string; name: string; date: string; day: number; schedule: ReturnType<typeof getScheduleForDate> }[] = [];
-
     const filteredUsers = manualSearch
       ? users.filter(u => u.name.toLowerCase().includes(manualSearch.toLowerCase()) || u.pin.includes(manualSearch))
       : users;
-
     for (const user of filteredUsers) {
       for (let d = 1; d <= daysInMonth; d++) {
         const dateStr = `${manualYear}-${String(manualMonth).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
@@ -101,23 +96,13 @@ export default function JadwalPage() {
         }
       }
     }
-
-    // Also include employees with no schedule at all but still in user list
-    // Actually, only show rows where there IS a schedule (either auto or manual)
-    // If user wants to see all employees, they can use the search
     return rows;
   };
 
   const manualView = buildManualView();
 
-  const openAddManual = (pin?: string, date?: string) => {
-    setManualForm({
-      employeePin: pin || "",
-      date: date || "",
-      jamKerjaKode: "",
-      startTime: "",
-      endTime: "",
-    });
+  const openAddManual = () => {
+    setManualForm({ employeePin: "", date: "", jamKerjaKode: "", startTime: "", endTime: "" });
     setEditManualId(null);
     setManualModal(true);
   };
@@ -156,7 +141,6 @@ export default function JadwalPage() {
     catch { alert("Gagal"); }
   };
 
-  // Auto CRUD
   const openAddAuto = () => {
     setAutoForm({ name: "", days: ["", "", "", "", "", "", ""], employees: [] });
     setEditAutoId(null);
@@ -194,7 +178,6 @@ export default function JadwalPage() {
     setAutoForm(p => ({ ...p, employees: p.employees.includes(pin) ? p.employees.filter(e => e !== pin) : [...p.employees, pin] }));
   };
 
-  // Excel Export/Import
   const exportExcel = () => {
     const rows = manualView.map(m => ({
       Karyawan: m.name,
@@ -262,216 +245,260 @@ export default function JadwalPage() {
       </div>
 
       <div className="flex gap-1 rounded-xl bg-gray-100 p-1 w-fit">
-        <button onClick={() => setTab("auto")} className={`rounded-lg px-4 py-1.5 text-[13px] font-medium transition-all ${tab === "auto" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>Auto</button>
-        <button onClick={() => setTab("manual")} className={`rounded-lg px-4 py-1.5 text-[13px] font-medium transition-all ${tab === "manual" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>Manual</button>
+        <Button
+          variant={tab === "auto" ? "secondary" : "ghost"}
+          size="sm"
+          onClick={() => setTab("auto")}
+          className={tab === "auto" ? "bg-white text-gray-900 shadow-sm hover:bg-white" : "text-gray-500 hover:text-gray-700"}
+        >
+          Auto
+        </Button>
+        <Button
+          variant={tab === "manual" ? "secondary" : "ghost"}
+          size="sm"
+          onClick={() => setTab("manual")}
+          className={tab === "manual" ? "bg-white text-gray-900 shadow-sm hover:bg-white" : "text-gray-500 hover:text-gray-700"}
+        >
+          Manual
+        </Button>
       </div>
 
       {tab === "auto" && (
         <div className="space-y-4">
           <div className="flex justify-end">
-            <button onClick={openAddAuto} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-[13px] font-medium text-white hover:bg-blue-700 shadow-sm shadow-blue-200"><Plus className="h-4 w-4" />Buat Jadwal Auto</button>
+            <Button size="sm" onClick={openAddAuto}>
+              <Plus className="h-4 w-4" />
+              Buat Jadwal Auto
+            </Button>
           </div>
-          <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
-            <table className="w-full text-left text-[13px]">
-              <thead><tr className="border-b border-gray-100 bg-gray-50/50">
-                <th className="px-4 py-3 font-medium text-gray-400">Nama Jadwal</th>
-                {DAYS.map(d => <th key={d} className="px-2 py-3 text-center font-medium text-gray-400">{d}</th>)}
-                <th className="px-4 py-3 font-medium text-gray-400">Karyawan</th>
-                <th className="px-4 py-3 text-center font-medium text-gray-400">Aksi</th>
-              </tr></thead>
-              <tbody className="divide-y divide-gray-50">
-                {autoLoading ? <tr><td colSpan={10} className="px-4 py-12 text-center text-gray-300">Memuat...</td></tr>
-                : autoList.length === 0 ? <tr><td colSpan={10} className="px-4 py-12 text-center text-gray-300">Belum ada jadwal auto.</td></tr>
-                : autoList.map(item => (
-                  <tr key={item.id} className="hover:bg-gray-50/50">
-                    <td className="px-4 py-3 font-medium text-gray-900">{item.name}</td>
+          <Card className="overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nama Jadwal</TableHead>
+                  {DAYS.map(d => <TableHead key={d} className="text-center">{d}</TableHead>)}
+                  <TableHead>Karyawan</TableHead>
+                  <TableHead className="text-center">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {autoLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={10} className="py-12 text-center text-gray-300">Memuat...</TableCell>
+                  </TableRow>
+                ) : autoList.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={10} className="py-12 text-center text-gray-300">Belum ada jadwal auto.</TableCell>
+                  </TableRow>
+                ) : autoList.map(item => (
+                  <TableRow key={item.id}>
+                    <TableCell className="font-medium text-gray-900">{item.name}</TableCell>
                     {[0,1,2,3,4,5,6].map(d => {
                       const day = item.days.find(dd => dd.dayOfWeek === d);
-                      return <td key={d} className="px-2 py-3 text-center font-mono text-[11px] text-gray-600">{day ? getJKName(day.jamKerjaKode) : "-"}</td>;
+                      return <TableCell key={d} className="text-center font-mono text-[11px] text-gray-600">{day ? getJKName(day.jamKerjaKode) : "-"}</TableCell>;
                     })}
-                    <td className="px-4 py-3 text-gray-500">{item.employees.length} org</td>
-                    <td className="px-4 py-3 text-center">
+                    <TableCell className="text-gray-500">{item.employees.length} org</TableCell>
+                    <TableCell className="text-center">
                       <div className="flex items-center justify-center gap-1">
-                        <button onClick={() => openEditAuto(item)} className="rounded-lg p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-600"><Pencil className="h-3.5 w-3.5" /></button>
-                        <button onClick={() => deleteAuto(item.id)} className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"><Trash2 className="h-3.5 w-3.5" /></button>
+                        <Button variant="ghost" size="icon" onClick={() => openEditAuto(item)}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => deleteAuto(item.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </TableBody>
+            </Table>
+          </Card>
         </div>
       )}
 
       {tab === "manual" && (
         <div className="space-y-4">
-          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-            <div className="flex flex-wrap items-center gap-3">
-              <div>
-                <label className="block text-[13px] font-medium text-gray-500">Bulan</label>
-                <select value={manualMonth} onChange={e => setManualMonth(Number(e.target.value))} className="mt-1 rounded-xl border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none">
-                  {Array.from({length: 12}, (_, i) => <option key={i+1} value={i+1}>{i+1}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-[13px] font-medium text-gray-500">Tahun</label>
-                <select value={manualYear} onChange={e => setManualYear(Number(e.target.value))} className="mt-1 rounded-xl border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none">
-                  {Array.from({length: 5}, (_, i) => <option key={i} value={2024+i}>{2024+i}</option>)}
-                </select>
-              </div>
-              <div className="flex-1 min-w-[200px]">
-                <label className="block text-[13px] font-medium text-gray-500">Cari Karyawan</label>
-                <div className="mt-1 flex items-center gap-2 rounded-xl border border-gray-200 px-3 py-2">
-                  <Search className="h-3.5 w-3.5 text-gray-400" />
-                  <input value={manualSearch} onChange={e => setManualSearch(e.target.value)} className="flex-1 border-0 bg-transparent text-[13px] outline-none" placeholder="Nama atau PIN..." />
+          <Card>
+            <CardContent className="p-5 pt-5">
+              <div className="flex flex-wrap items-center gap-3">
+                <div>
+                  <label className="block text-[13px] font-medium text-gray-500">Bulan</label>
+                  <select value={manualMonth} onChange={e => setManualMonth(Number(e.target.value))} className="mt-1 flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring">
+                    {Array.from({length: 12}, (_, i) => <option key={i+1} value={i+1}>{i+1}</option>)}
+                  </select>
                 </div>
+                <div>
+                  <label className="block text-[13px] font-medium text-gray-500">Tahun</label>
+                  <select value={manualYear} onChange={e => setManualYear(Number(e.target.value))} className="mt-1 flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring">
+                    {Array.from({length: 5}, (_, i) => <option key={i} value={2024+i}>{2024+i}</option>)}
+                  </select>
+                </div>
+                <div className="flex-1 min-w-[200px]">
+                  <label className="block text-[13px] font-medium text-gray-500">Cari Karyawan</label>
+                  <div className="mt-1 flex items-center gap-2 rounded-md border border-input px-3 py-1 shadow-sm">
+                    <Search className="h-3.5 w-3.5 text-gray-400" />
+                    <input value={manualSearch} onChange={e => setManualSearch(e.target.value)} className="flex-1 border-0 bg-transparent text-sm outline-none" placeholder="Nama atau PIN..." />
+                  </div>
+                </div>
+                <Button variant="default" size="sm" onClick={exportExcel} className="bg-emerald-600 hover:bg-emerald-700">
+                  <Download className="h-4 w-4" />Export Excel
+                </Button>
+                <label className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-700 cursor-pointer relative">
+                  <Upload className="h-4 w-4" />Import Excel
+                  <input type="file" accept=".xlsx,.xls" onChange={importExcel} className="absolute inset-0 opacity-0 cursor-pointer" />
+                </label>
               </div>
-              <button onClick={exportExcel} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-[13px] font-medium text-white hover:bg-emerald-700 shadow-sm shadow-emerald-200"><Download className="h-4 w-4" />Export Excel</button>
-              <label className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-[13px] font-medium text-white hover:bg-amber-700 shadow-sm shadow-amber-200 cursor-pointer">
-                <Upload className="h-4 w-4" />Import Excel
-                <input type="file" accept=".xlsx,.xls" onChange={importExcel} className="hidden" />
-              </label>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
           {manualLoading ? (
-            <div className="rounded-2xl border border-gray-100 bg-white p-12 text-center text-gray-300 shadow-sm">Memuat...</div>
+            <Card>
+              <CardContent className="py-12 text-center text-gray-300">Memuat...</CardContent>
+            </Card>
           ) : manualView.length === 0 ? (
-            <div className="rounded-2xl border border-gray-100 bg-white p-12 text-center text-gray-300 shadow-sm">
-              <p>Tidak ada jadwal untuk bulan ini.</p>
-              <p className="text-xs mt-1">Buat jadwal Auto terlebih dahulu atau tambah jadwal Manual.</p>
-            </div>
+            <Card>
+              <CardContent className="py-12 text-center text-gray-300">
+                <p>Tidak ada jadwal untuk bulan ini.</p>
+                <p className="text-xs mt-1">Buat jadwal Auto terlebih dahulu atau tambah jadwal Manual.</p>
+              </CardContent>
+            </Card>
           ) : (
-            <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-[13px]">
-                  <thead><tr className="border-b border-gray-100 bg-gray-50/50">
-                    <th className="px-4 py-3 font-medium text-gray-400">Karyawan</th>
-                    <th className="px-4 py-3 font-medium text-gray-400">Tanggal</th>
-                    <th className="px-4 py-3 font-medium text-gray-400">Hari</th>
-                    <th className="px-4 py-3 font-medium text-gray-400">Jam Kerja</th>
-                    <th className="px-4 py-3 font-medium text-gray-400">Jam Mulai</th>
-                    <th className="px-4 py-3 font-medium text-gray-400">Jam Selesai</th>
-                    <th className="px-4 py-3 font-medium text-gray-400">Sumber</th>
-                    <th className="px-4 py-3 text-center font-medium text-gray-400">Aksi</th>
-                  </tr></thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {manualView.map((row, idx) => {
-                      const manualEntry = manualData.find(m => m.employeePin === row.pin && m.date?.slice(0, 10) === row.date);
-                      return (
-                        <tr key={`${row.pin}-${row.date}`} className="hover:bg-gray-50/50">
-                          <td className="px-4 py-2.5 text-gray-900 font-medium">{row.name}</td>
-                          <td className="px-4 py-2.5 font-mono text-gray-700">{row.date}</td>
-                          <td className="px-4 py-2.5 text-gray-500">{DAYS_FULL[new Date(row.date).getDay()]}</td>
-                          <td className="px-4 py-2.5 text-gray-700">{getJKName(row.schedule.jamKerjaKode)}</td>
-                          <td className="px-4 py-2.5 font-mono text-gray-700">{row.schedule.startTime || getJK(row.schedule.jamKerjaKode)?.startTime || "-"}</td>
-                          <td className="px-4 py-2.5 font-mono text-gray-700">{row.schedule.endTime || getJK(row.schedule.jamKerjaKode)?.endTime || "-"}</td>
-                          <td className="px-4 py-2.5">
-                            <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-medium ${row.schedule.source === "manual" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"}`}>
-                              {row.schedule.source === "manual" ? "MANUAL" : "AUTO"}
-                            </span>
-                          </td>
-                          <td className="px-4 py-2.5 text-center">
-                            <div className="flex items-center justify-center gap-1">
-                              {manualEntry && (
-                                <>
-                                  <button onClick={() => openEditManual(manualEntry)} className="rounded-lg p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-600"><Pencil className="h-3.5 w-3.5" /></button>
-                                  <button onClick={() => deleteManual(manualEntry.id)} className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"><Trash2 className="h-3.5 w-3.5" /></button>
-                                </>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <Card className="overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Karyawan</TableHead>
+                    <TableHead>Tanggal</TableHead>
+                    <TableHead>Hari</TableHead>
+                    <TableHead>Jam Kerja</TableHead>
+                    <TableHead>Jam Mulai</TableHead>
+                    <TableHead>Jam Selesai</TableHead>
+                    <TableHead>Sumber</TableHead>
+                    <TableHead className="text-center">Aksi</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {manualView.map((row, idx) => {
+                    const manualEntry = manualData.find(m => m.employeePin === row.pin && m.date?.slice(0, 10) === row.date);
+                    return (
+                      <TableRow key={`${row.pin}-${row.date}`}>
+                        <TableCell className="font-medium text-gray-900">{row.name}</TableCell>
+                        <TableCell className="font-mono text-gray-700">{row.date}</TableCell>
+                        <TableCell className="text-gray-500">{DAYS_FULL[new Date(row.date).getDay()]}</TableCell>
+                        <TableCell className="text-gray-700">{getJKName(row.schedule.jamKerjaKode)}</TableCell>
+                        <TableCell className="font-mono text-gray-700">{row.schedule.startTime || getJK(row.schedule.jamKerjaKode)?.startTime || "-"}</TableCell>
+                        <TableCell className="font-mono text-gray-700">{row.schedule.endTime || getJK(row.schedule.jamKerjaKode)?.endTime || "-"}</TableCell>
+                        <TableCell>
+                          <Badge variant={row.schedule.source === "manual" ? "default" : "secondary"} className={row.schedule.source === "manual" ? "bg-blue-100 text-blue-700 hover:bg-blue-100" : "bg-gray-100 text-gray-600 hover:bg-gray-100"}>
+                            {row.schedule.source === "manual" ? "MANUAL" : "AUTO"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            {manualEntry && (
+                              <>
+                                <Button variant="ghost" size="icon" onClick={() => openEditManual(manualEntry)}>
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => deleteManual(manualEntry.id)}>
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </Card>
           )}
         </div>
       )}
 
-      {/* Manual Edit Modal */}
-      {manualModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setManualModal(false)}>
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-bold text-gray-900">Edit Jadwal Manual</h3>
-              <button onClick={() => setManualModal(false)} className="rounded-lg p-1 text-gray-400 hover:bg-gray-100"><X className="h-4 w-4" /></button>
-            </div>
-            <div className="space-y-3">
-              <div><label className="block text-[13px] font-medium text-gray-500">Karyawan</label>
-                <select value={manualForm.employeePin} onChange={e => setManualForm(p => ({ ...p, employeePin: e.target.value }))} className="mt-1 block w-full rounded-xl border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none">
-                  {users.map(u => <option key={u.pin} value={u.pin}>{u.name} ({u.pin})</option>)}
-                </select>
-              </div>
-              <div><label className="block text-[13px] font-medium text-gray-500">Tanggal</label><input type="date" value={manualForm.date} onChange={e => setManualForm(p => ({ ...p, date: e.target.value }))} className="mt-1 block w-full rounded-xl border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none" /></div>
-              <div><label className="block text-[13px] font-medium text-gray-500">Jam Kerja</label>
-                <select value={manualForm.jamKerjaKode} onChange={e => setManualForm(p => ({ ...p, jamKerjaKode: e.target.value }))} className="mt-1 block w-full rounded-xl border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none">
-                  {jamKerja.map(j => <option key={j.kode} value={j.kode}>{j.kode} - {j.name}</option>)}
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="block text-[13px] font-medium text-gray-500">Jam Mulai</label><input type="time" value={manualForm.startTime} onChange={e => setManualForm(p => ({ ...p, startTime: e.target.value }))} className="mt-1 block w-full rounded-xl border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none" /></div>
-                <div><label className="block text-[13px] font-medium text-gray-500">Jam Selesai</label><input type="time" value={manualForm.endTime} onChange={e => setManualForm(p => ({ ...p, endTime: e.target.value }))} className="mt-1 block w-full rounded-xl border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none" /></div>
-              </div>
-            </div>
-            <div className="flex gap-2 justify-end mt-5">
-              <button onClick={() => setManualModal(false)} className="rounded-xl border border-gray-200 px-4 py-2 text-[13px] font-medium text-gray-600 hover:bg-gray-50">Batal</button>
-              <button onClick={saveManual} disabled={savingManual} className="rounded-xl bg-blue-600 px-4 py-2 text-[13px] font-medium text-white hover:bg-blue-700 disabled:opacity-50">{savingManual ? "Menyimpan..." : "Simpan"}</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Auto Modal */}
-      {autoModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setAutoModal(false)}>
-          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-xl" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-bold text-gray-900">{editAutoId ? "Edit" : "Buat"} Jadwal Auto</h3>
-              <button onClick={() => setAutoModal(false)} className="rounded-lg p-1 text-gray-400 hover:bg-gray-100"><X className="h-4 w-4" /></button>
-            </div>
-            <div className="mb-4">
-              <label className="block text-[13px] font-medium text-gray-500">Nama Jadwal</label>
-              <input value={autoForm.name} onChange={e => setAutoForm(p => ({ ...p, name: e.target.value }))} className="mt-1 block w-full rounded-xl border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none" />
-            </div>
-            <div className="mb-4">
-              <label className="block text-[13px] font-medium text-gray-500 mb-2">Jam Kerja per Hari</label>
-              <div className="grid grid-cols-7 gap-2">
-                {DAYS_FULL.map((day, i) => (
-                  <div key={i}>
-                    <label className="block text-[11px] font-medium text-gray-400 mb-1 text-center">{day.slice(0, 3)}</label>
-                    <select value={autoForm.days[i]} onChange={e => { const d = [...autoForm.days]; d[i] = e.target.value; setAutoForm(p => ({ ...p, days: d })); }} className="block w-full rounded-lg border border-gray-200 px-2 py-1.5 text-[12px] focus:border-blue-500 focus:outline-none">
-                      <option value="">-</option>
-                      {jamKerja.map(j => <option key={j.kode} value={j.kode}>{j.kode}</option>)}
-                    </select>
-                  </div>
-                ))}
-              </div>
+      <Dialog open={manualModal} onOpenChange={(open) => { if (!open) setManualModal(false); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editManualId ? "Edit" : "Tambah"} Jadwal Manual</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-[13px] font-medium text-gray-500">Karyawan</label>
+              <select value={manualForm.employeePin} onChange={e => setManualForm(p => ({ ...p, employeePin: e.target.value }))} className="mt-1 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring">
+                <option value="">Pilih Karyawan</option>
+                {users.map(u => <option key={u.pin} value={u.pin}>{u.name} ({u.pin})</option>)}
+              </select>
             </div>
             <div>
-              <label className="block text-[13px] font-medium text-gray-500 mb-2">Pilih Karyawan</label>
-              <div className="max-h-40 overflow-y-auto border border-gray-100 rounded-xl p-2 space-y-1">
-                {users.map(u => (
-                  <label key={u.pin} className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-gray-50 cursor-pointer">
-                    <input type="checkbox" checked={autoForm.employees.includes(u.pin)} onChange={() => toggleEmployee(u.pin)} className="rounded" />
-                    <span className="text-[13px] text-gray-700">{u.name} ({u.pin})</span>
-                  </label>
-                ))}
+              <label className="block text-[13px] font-medium text-gray-500">Tanggal</label>
+              <Input type="date" value={manualForm.date} onChange={e => setManualForm(p => ({ ...p, date: e.target.value }))} className="mt-1" />
+            </div>
+            <div>
+              <label className="block text-[13px] font-medium text-gray-500">Jam Kerja</label>
+              <select value={manualForm.jamKerjaKode} onChange={e => setManualForm(p => ({ ...p, jamKerjaKode: e.target.value }))} className="mt-1 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring">
+                <option value="">Pilih Jam Kerja</option>
+                {jamKerja.map(j => <option key={j.kode} value={j.kode}>{j.kode} - {j.name}</option>)}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[13px] font-medium text-gray-500">Jam Mulai</label>
+                <Input type="time" value={manualForm.startTime} onChange={e => setManualForm(p => ({ ...p, startTime: e.target.value }))} className="mt-1" />
+              </div>
+              <div>
+                <label className="block text-[13px] font-medium text-gray-500">Jam Selesai</label>
+                <Input type="time" value={manualForm.endTime} onChange={e => setManualForm(p => ({ ...p, endTime: e.target.value }))} className="mt-1" />
               </div>
             </div>
-            <div className="flex gap-2 justify-end mt-5">
-              <button onClick={() => setAutoModal(false)} className="rounded-xl border border-gray-200 px-4 py-2 text-[13px] font-medium text-gray-600 hover:bg-gray-50">Batal</button>
-              <button onClick={saveAuto} disabled={savingAuto} className="rounded-xl bg-blue-600 px-4 py-2 text-[13px] font-medium text-white hover:bg-blue-700 disabled:opacity-50">{savingAuto ? "Menyimpan..." : "Simpan"}</button>
+          </div>
+          <div className="flex gap-2 justify-end mt-5">
+            <Button variant="outline" onClick={() => setManualModal(false)}>Batal</Button>
+            <Button onClick={saveManual} disabled={savingManual}>{savingManual ? "Menyimpan..." : "Simpan"}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={autoModal} onOpenChange={(open) => { if (!open) setAutoModal(false); }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editAutoId ? "Edit" : "Buat"} Jadwal Auto</DialogTitle>
+          </DialogHeader>
+          <div className="mb-4">
+            <label className="block text-[13px] font-medium text-gray-500">Nama Jadwal</label>
+            <Input type="text" value={autoForm.name} onChange={e => setAutoForm(p => ({ ...p, name: e.target.value }))} className="mt-1" />
+          </div>
+          <div className="mb-4">
+            <label className="block text-[13px] font-medium text-gray-500 mb-2">Jam Kerja per Hari</label>
+            <div className="grid grid-cols-7 gap-2">
+              {DAYS_FULL.map((day, i) => (
+                <div key={i}>
+                  <label className="block text-[11px] font-medium text-gray-400 mb-1 text-center">{day.slice(0, 3)}</label>
+                  <select value={autoForm.days[i]} onChange={e => { const d = [...autoForm.days]; d[i] = e.target.value; setAutoForm(p => ({ ...p, days: d })); }} className="block w-full rounded-md border border-input bg-transparent px-2 py-1.5 text-xs shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring">
+                    <option value="">-</option>
+                    {jamKerja.map(j => <option key={j.kode} value={j.kode}>{j.kode}</option>)}
+                  </select>
+                </div>
+              ))}
             </div>
           </div>
-        </div>
-      )}
-
-
+          <div>
+            <label className="block text-[13px] font-medium text-gray-500 mb-2">Pilih Karyawan</label>
+            <div className="max-h-40 overflow-y-auto border border-input rounded-md p-2 space-y-1">
+              {users.map(u => (
+                <label key={u.pin} className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-gray-50 cursor-pointer">
+                  <input type="checkbox" checked={autoForm.employees.includes(u.pin)} onChange={() => toggleEmployee(u.pin)} className="rounded" />
+                  <span className="text-[13px] text-gray-700">{u.name} ({u.pin})</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end mt-5">
+            <Button variant="outline" onClick={() => setAutoModal(false)}>Batal</Button>
+            <Button onClick={saveAuto} disabled={savingAuto}>{savingAuto ? "Menyimpan..." : "Simpan"}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -18,12 +18,13 @@ import {
   CalendarCheck,
   ClipboardList,
   Clock,
-  CalendarRange,
   Ban,
   Gavel,
   Briefcase,
   CalendarDays,
 } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -84,14 +85,14 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="fixed left-0 top-0 z-40 flex h-screen w-64 flex-col border-r border-gray-100 bg-white">
-      <div className="flex h-16 items-center gap-3 border-b border-gray-100 px-6">
+    <aside className="fixed left-0 top-0 z-40 flex h-screen w-64 flex-col border-r bg-background">
+      <div className="flex h-16 items-center gap-3 border-b px-6">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 shadow-sm shadow-blue-200">
           <FingerprintIcon className="h-5 w-5 text-white" />
         </div>
         <div>
-          <span className="text-sm font-bold tracking-tight text-gray-900">Fingerspot</span>
-          <p className="text-[10px] font-medium text-gray-400">Attendance System</p>
+          <span className="text-sm font-bold tracking-tight text-foreground">Fingerspot</span>
+          <p className="text-[10px] font-medium text-muted-foreground">Attendance System</p>
         </div>
       </div>
       <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
@@ -102,12 +103,15 @@ export function Sidebar() {
               <div key={item.name}>
                 <button
                   onClick={() => toggleMenu(item.name)}
-                  className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium text-gray-500 transition-all duration-150 hover:bg-gray-50 hover:text-gray-900"
+                  className={cn(
+                    buttonVariants({ variant: "ghost" }),
+                    "w-full justify-between"
+                  )}
                 >
-                  <div className="flex items-center gap-3">
+                  <span className="flex items-center gap-3">
                     <item.icon className="h-[18px] w-[18px] flex-shrink-0" />
                     {item.name}
-                  </div>
+                  </span>
                   <ChevronDown
                     className={cn(
                       "h-3.5 w-3.5 transition-transform duration-150",
@@ -116,7 +120,7 @@ export function Sidebar() {
                   />
                 </button>
                 {isOpen && (
-                  <div className="ml-5 mt-0.5 space-y-0.5 border-l-2 border-gray-100 pl-2">
+                  <div className="ml-5 mt-0.5 space-y-0.5 border-l-2 pl-2">
                     {item.children.map((child) => {
                       const active = isActive(child.href);
                       return (
@@ -124,10 +128,10 @@ export function Sidebar() {
                           key={child.name}
                           href={child.href}
                           className={cn(
-                            "flex items-center gap-2.5 rounded-lg px-3 py-2 text-[12.5px] font-medium transition-all duration-150",
+                            "flex items-center gap-2.5 rounded-lg px-3 py-2 text-[12.5px] font-medium transition-all",
                             active
-                              ? "bg-blue-50 text-blue-700"
-                              : "text-gray-400 hover:bg-gray-50 hover:text-gray-700"
+                              ? "bg-muted text-foreground"
+                              : "text-muted-foreground hover:bg-muted hover:text-foreground"
                           )}
                         >
                           <child.icon className="h-3.5 w-3.5 flex-shrink-0" />
@@ -147,10 +151,8 @@ export function Sidebar() {
               key={item.name}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-all duration-150",
-                active
-                  ? "bg-blue-50 text-blue-700 shadow-sm"
-                  : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                buttonVariants({ variant: active ? "secondary" : "ghost" }),
+                "w-full justify-start gap-3"
               )}
             >
               <item.icon
@@ -161,10 +163,14 @@ export function Sidebar() {
           );
         })}
       </nav>
-      <div className="border-t border-gray-100 p-3">
+      <Separator />
+      <div className="p-3">
         <button
           onClick={handleLogout}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium text-gray-400 transition-all duration-150 hover:bg-red-50 hover:text-red-600"
+          className={cn(
+            buttonVariants({ variant: "ghost" }),
+            "w-full justify-start gap-3 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+          )}
         >
           <LogOut className="h-[18px] w-[18px] flex-shrink-0" />
           Keluar

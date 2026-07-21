@@ -8,11 +8,15 @@ import {
   FileSpreadsheet,
   FileText,
   Search,
-  Users,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 
 interface DayEntry {
   date: string;
@@ -43,37 +47,31 @@ interface ReportResponse {
   report: EmployeeReport[];
 }
 
-interface UserInfoEntry {
-  id: string;
-  pin: string;
-  name: string;
-}
-
 const MONTHS = [
   "Januari", "Februari", "Maret", "April", "Mei", "Juni",
   "Juli", "Agustus", "September", "Oktober", "November", "Desember",
 ];
 
-const STATUS_COLORS: Record<string, string> = {
-  H: "text-green-600",
-  A: "text-red-600",
-  I: "text-amber-500",
-  S: "text-blue-600",
-  C: "text-purple-600",
-  TL: "text-orange-500",
-  D: "text-teal-600",
-  L: "text-gray-400",
+const STATUS_BADGE_VARIANT: Record<string, string> = {
+  H: "default",
+  A: "destructive",
+  I: "secondary",
+  S: "secondary",
+  C: "secondary",
+  TL: "default",
+  D: "secondary",
+  L: "secondary",
 };
 
-const STATUS_BG: Record<string, string> = {
-  H: "bg-green-50",
-  A: "bg-red-50",
-  I: "bg-amber-50",
-  S: "bg-blue-50",
-  C: "bg-purple-50",
-  TL: "bg-orange-50",
-  D: "bg-teal-50",
-  L: "bg-gray-50",
+const STATUS_BADGE_CLASS: Record<string, string> = {
+  H: "bg-green-100 text-green-800 hover:bg-green-100 border-green-300",
+  A: "",
+  I: "bg-amber-100 text-amber-800 hover:bg-amber-100 border-amber-300",
+  S: "bg-blue-100 text-blue-800 hover:bg-blue-100 border-blue-300",
+  C: "bg-purple-100 text-purple-800 hover:bg-purple-100 border-purple-300",
+  TL: "bg-orange-100 text-orange-800 hover:bg-orange-100 border-orange-300",
+  D: "bg-teal-100 text-teal-800 hover:bg-teal-100 border-teal-300",
+  L: "bg-gray-100 text-gray-400 hover:bg-gray-100 border-gray-300",
 };
 
 function getDaysInMonth(year: number, month: number) {
@@ -87,7 +85,6 @@ export default function AttendanceReportPage() {
   const [data, setData] = useState<ReportResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [employeeSearch, setEmployeeSearch] = useState("");
-  const [userList, setUserList] = useState<UserInfoEntry[]>([]);
   const [generating, setGenerating] = useState(false);
 
   const daysInMonth = getDaysInMonth(year, month);
@@ -106,13 +103,6 @@ export default function AttendanceReportPage() {
   useEffect(() => {
     fetchReport();
   }, [fetchReport]);
-
-  useEffect(() => {
-    fetch("/api/userinfo?limit=9999")
-      .then((res) => res.json())
-      .then((d) => setUserList(d.data || []))
-      .catch(() => {});
-  }, []);
 
   const reportData = data?.report || [];
 
@@ -144,20 +134,18 @@ export default function AttendanceReportPage() {
     if (!status) {
       return <span className="text-gray-200">-</span>;
     }
-    const colorClass = STATUS_COLORS[status] || "text-gray-500";
-    const bgClass = STATUS_BG[status] || "bg-gray-50";
+    const variant = (STATUS_BADGE_VARIANT[status] || "secondary") as "default" | "secondary" | "destructive" | "outline" | "ghost" | "link";
+    const badgeClass = STATUS_BADGE_CLASS[status] || "";
     const isTL = status === "TL";
     return (
-      <span
-        className={`inline-flex items-center justify-center gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${colorClass} ${bgClass}`}
-      >
+      <Badge variant={variant} className={badgeClass}>
         {status}
         {isTL && lateMinutes > 0 && (
-          <span className="text-[9px] font-normal text-gray-400">
+          <span className="ml-0.5 text-[9px] font-normal opacity-60">
             {lateMinutes}m
           </span>
         )}
-      </span>
+      </Badge>
     );
   }
 
@@ -268,236 +256,229 @@ export default function AttendanceReportPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="flex items-end gap-2">
-            <div>
-              <label className="block text-[13px] font-medium text-gray-500">
-                Bulan
-              </label>
-              <select
-                value={month}
-                onChange={(e) => setMonth(Number(e.target.value))}
-                className="mt-1.5 block rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-[13px] focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-              >
-                {MONTHS.map((name, idx) => (
-                  <option key={idx} value={idx + 1}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-[13px] font-medium text-gray-500">
-                Tahun
-              </label>
-              <select
-                value={year}
-                onChange={(e) => setYear(Number(e.target.value))}
-                className="mt-1.5 block rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-[13px] focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-              >
-                {Array.from({ length: 10 }, (_, i) => {
-                  const y = now.getFullYear() - 5 + i;
-                  return (
-                    <option key={y} value={y}>
-                      {y}
+      <Card>
+        <CardContent className="p-5">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="flex items-end gap-2">
+              <div>
+                <label className="block text-[13px] font-medium text-gray-500 mb-1.5">
+                  Bulan
+                </label>
+                <select
+                  value={month}
+                  onChange={(e) => setMonth(Number(e.target.value))}
+                  className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  {MONTHS.map((name, idx) => (
+                    <option key={idx} value={idx + 1}>
+                      {name}
                     </option>
-                  );
-                })}
-              </select>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[13px] font-medium text-gray-500 mb-1.5">
+                  Tahun
+                </label>
+                <select
+                  value={year}
+                  onChange={(e) => setYear(Number(e.target.value))}
+                  className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  {Array.from({ length: 10 }, (_, i) => {
+                    const y = now.getFullYear() - 5 + i;
+                    return (
+                      <option key={y} value={y}>
+                        {y}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1 pb-0.5">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handlePrevMonth}
+                title="Bulan sebelumnya"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="px-2 text-[13px] font-semibold text-gray-700 min-w-[120px] text-center">
+                {MONTHS[month - 1]} {year}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleNextMonth}
+                title="Bulan berikutnya"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="flex-1 min-w-[180px] max-w-[280px]">
+              <label className="block text-[13px] font-medium text-gray-500 mb-1.5">
+                Cari Karyawan
+              </label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="text"
+                  value={employeeSearch}
+                  onChange={(e) => setEmployeeSearch(e.target.value)}
+                  placeholder="Nama atau PIN..."
+                  className="pl-9"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 pb-0.5">
+              <Button
+                onClick={async () => {
+                  setGenerating(true);
+                  try {
+                    const res = await fetch(`/api/reports?command=generate&month=${month}&year=${year}`);
+                    const d = await res.json();
+                    if (d.success) { alert("Laporan berhasil digenerate untuk " + month + "/" + year); fetchReport(); }
+                    else alert("Gagal: " + (d.error || ""));
+                  } catch { alert("Gagal generate laporan"); }
+                  setGenerating(false);
+                }}
+                disabled={generating}
+              >
+                {generating ? "Memproses..." : "Generate Laporan"}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={exportExcel}
+                disabled={!data || reportData.length === 0}
+              >
+                <FileSpreadsheet className="h-4 w-4 mr-1.5" />
+                Excel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={exportPDF}
+                disabled={!data || reportData.length === 0}
+              >
+                <FileText className="h-4 w-4 mr-1.5" />
+                PDF
+              </Button>
             </div>
           </div>
+        </CardContent>
+      </Card>
 
-          <div className="flex items-center gap-1 pb-0.5">
-            <button
-              onClick={handlePrevMonth}
-              className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 transition-colors"
-              title="Bulan sebelumnya"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <span className="px-2 text-[13px] font-semibold text-gray-700 min-w-[120px] text-center">
-              {MONTHS[month - 1]} {year}
-            </span>
-            <button
-              onClick={handleNextMonth}
-              className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 transition-colors"
-              title="Bulan berikutnya"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-
-          <div className="flex-1 min-w-[180px] max-w-[280px]">
-            <label className="block text-[13px] font-medium text-gray-500">
-              Cari Karyawan
-            </label>
-            <div className="relative mt-1.5">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-300" />
-              <input
-                type="text"
-                value={employeeSearch}
-                onChange={(e) => setEmployeeSearch(e.target.value)}
-                placeholder="Nama atau PIN..."
-                className="block w-full rounded-xl border border-gray-200 bg-gray-50 pl-9 pr-3 py-2 text-[13px] focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 pb-0.5">
-            <button
-              onClick={async () => {
-                setGenerating(true);
-                try {
-                  const res = await fetch(`/api/reports?command=generate&month=${month}&year=${year}`);
-                  const d = await res.json();
-                  if (d.success) { alert("Laporan berhasil digenerate untuk " + month + "/" + year); fetchReport(); }
-                  else alert("Gagal: " + (d.error || ""));
-                } catch { alert("Gagal generate laporan"); }
-                setGenerating(false);
-              }}
-              disabled={generating}
-              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-[13px] font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm shadow-blue-200"
-            >
-              {generating ? "Memproses..." : "Generate Laporan"}
-            </button>
-            <button
-              onClick={exportExcel}
-              disabled={!data || reportData.length === 0}
-              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-[13px] font-medium text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors shadow-sm shadow-emerald-200"
-            >
-              <FileSpreadsheet className="h-4 w-4" />
-              Excel
-            </button>
-            <button
-              onClick={exportPDF}
-              disabled={!data || reportData.length === 0}
-              className="inline-flex items-center gap-2 rounded-xl bg-red-500 px-4 py-2 text-[13px] font-medium text-white hover:bg-red-600 disabled:opacity-50 transition-colors shadow-sm shadow-red-200"
-            >
-              <FileText className="h-4 w-4" />
-              PDF
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+      <Card>
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-[13px]">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50/50">
-                <th className="sticky left-0 z-10 bg-gray-50/50 px-3 py-3 font-medium text-gray-400 w-10 text-center">
-                  No
-                </th>
-                <th className="sticky left-[40px] z-10 bg-gray-50/50 px-3 py-3 font-medium text-gray-400 min-w-[160px]">
-                  Nama Karyawan
-                </th>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-10 text-center">No</TableHead>
+                <TableHead className="min-w-[160px]">Nama Karyawan</TableHead>
                 {daysArray.map((d) => (
-                  <th
-                    key={d}
-                    className="px-1.5 py-3 text-center font-medium text-gray-400 text-[11px] w-8"
-                  >
+                  <TableHead key={d} className="text-center text-[11px] w-8 px-1.5">
                     {d}
-                  </th>
+                  </TableHead>
                 ))}
-                <th className="px-2 py-3 text-center font-medium text-green-600 text-[11px] w-10">
+                <TableHead className="text-center text-green-600 text-[11px] w-10 px-2">
                   H
-                </th>
-                <th className="px-2 py-3 text-center font-medium text-red-600 text-[11px] w-8">
+                </TableHead>
+                <TableHead className="text-center text-red-600 text-[11px] w-8 px-2">
                   A
-                </th>
-                <th className="px-2 py-3 text-center font-medium text-amber-500 text-[11px] w-8">
+                </TableHead>
+                <TableHead className="text-center text-amber-500 text-[11px] w-8 px-2">
                   I
-                </th>
-                <th className="px-2 py-3 text-center font-medium text-blue-600 text-[11px] w-8">
+                </TableHead>
+                <TableHead className="text-center text-blue-600 text-[11px] w-8 px-2">
                   S
-                </th>
-                <th className="px-2 py-3 text-center font-medium text-purple-600 text-[11px] w-8">
+                </TableHead>
+                <TableHead className="text-center text-purple-600 text-[11px] w-8 px-2">
                   C
-                </th>
-                <th className="px-2 py-3 text-center font-medium text-orange-500 text-[11px] w-8">
+                </TableHead>
+                <TableHead className="text-center text-orange-500 text-[11px] w-8 px-2">
                   TL
-                </th>
-                <th className="px-3 py-3 text-center font-medium text-gray-500 text-[11px] w-14">
+                </TableHead>
+                <TableHead className="text-center text-[11px] w-14 px-3">
                   Total
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {loading ? (
-                <tr>
-                  <td
+                <TableRow>
+                  <TableCell
                     colSpan={daysInMonth + 9}
-                    className="px-4 py-12 text-center text-gray-300"
+                    className="h-32 text-center text-muted-foreground"
                   >
                     <div className="flex items-center justify-center gap-2">
                       <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
                       Memuat...
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ) : filteredData.length === 0 ? (
-                <tr>
-                  <td
+                <TableRow>
+                  <TableCell
                     colSpan={daysInMonth + 9}
-                    className="px-4 py-12 text-center text-gray-300"
+                    className="h-32 text-center text-muted-foreground"
                   >
                     {employeeSearch
                       ? "Tidak ada karyawan yang cocok dengan pencarian."
                       : "Belum ada data laporan untuk bulan ini."}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ) : (
                 filteredData.map((emp, idx) => (
-                  <tr
-                    key={emp.pin}
-                    className="hover:bg-gray-50/50 transition-colors"
-                  >
-                    <td className="sticky left-0 z-10 bg-white px-3 py-2 text-center text-gray-400 text-[12px]">
+                  <TableRow key={emp.pin}>
+                    <TableCell className="text-center text-muted-foreground text-[12px]">
                       {idx + 1}
-                    </td>
-                    <td className="sticky left-[40px] z-10 bg-white px-3 py-2 font-medium text-gray-900 text-[12px]">
-                      <span className="text-[11px] text-gray-400 font-mono mr-1.5">
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      <span className="text-[11px] text-muted-foreground font-mono mr-1.5">
                         {emp.pin}
                       </span>
                       {emp.name}
-                    </td>
+                    </TableCell>
                     {daysArray.map((d) => (
-                      <td key={d} className="px-1.5 py-2 text-center">
+                      <TableCell key={d} className="text-center px-1.5">
                         {renderCell(getStatus(emp, d), getLateMinutes(emp, d))}
-                      </td>
+                      </TableCell>
                     ))}
-                    <td className="px-2 py-2 text-center font-semibold text-green-600 text-[12px]">
+                    <TableCell className="text-center font-semibold text-green-600 text-[12px] px-2">
                       {emp.totals.H}
-                    </td>
-                    <td className="px-2 py-2 text-center font-semibold text-red-600 text-[12px]">
+                    </TableCell>
+                    <TableCell className="text-center font-semibold text-red-600 text-[12px] px-2">
                       {emp.totals.A}
-                    </td>
-                    <td className="px-2 py-2 text-center font-semibold text-amber-500 text-[12px]">
+                    </TableCell>
+                    <TableCell className="text-center font-semibold text-amber-500 text-[12px] px-2">
                       {emp.totals.I}
-                    </td>
-                    <td className="px-2 py-2 text-center font-semibold text-blue-600 text-[12px]">
+                    </TableCell>
+                    <TableCell className="text-center font-semibold text-blue-600 text-[12px] px-2">
                       {emp.totals.S}
-                    </td>
-                    <td className="px-2 py-2 text-center font-semibold text-purple-600 text-[12px]">
+                    </TableCell>
+                    <TableCell className="text-center font-semibold text-purple-600 text-[12px] px-2">
                       {emp.totals.C}
-                    </td>
-                    <td className="px-2 py-2 text-center font-semibold text-orange-500 text-[12px]">
+                    </TableCell>
+                    <TableCell className="text-center font-semibold text-orange-500 text-[12px] px-2">
                       {emp.totals.TL}
-                    </td>
-                    <td className="px-3 py-2 text-center font-semibold text-gray-700 text-[12px]">
+                    </TableCell>
+                    <TableCell className="text-center font-semibold text-[12px] px-3">
                       {emp.totals.total}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
-      </div>
+      </Card>
 
       {!loading && reportData.length > 0 && (
-        <div className="rounded-2xl border border-blue-100 bg-blue-50 p-3 text-[12px] text-blue-700 leading-relaxed">
+        <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-[12px] text-blue-700 leading-relaxed">
           <strong>Keterangan:</strong>{" "}
           <span className="inline-flex items-center gap-1 mr-3">
             <span className="inline-block h-3 w-6 rounded bg-green-50 text-[10px] text-center font-bold text-green-600">

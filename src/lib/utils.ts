@@ -1,71 +1,53 @@
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { clsx, type ClassValue } from "clsx"
+import { twMerge } from "tailwind-merge"
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
+  return twMerge(clsx(inputs))
 }
 
-export function formatDate(date: Date | string): string {
-  const d = new Date(date);
-  return d.toLocaleDateString("id-ID", {
-    day: "2-digit",
-    month: "short",
+export function formatDateTime(val: string | Date | null | undefined): string {
+  if (!val) return "-";
+  const d = typeof val === "string" ? new Date(val) : val;
+  if (isNaN(d.getTime())) return String(val);
+  return d.toLocaleString("id-ID", {
     year: "numeric",
-  });
-}
-
-export function formatDateTime(date: Date | string): string {
-  const d = new Date(date);
-  return d.toLocaleDateString("id-ID", {
+    month: "2-digit",
     day: "2-digit",
-    month: "short",
-    year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    second: "2-digit",
   });
 }
 
-export function formatTime(date: Date | string): string {
-  const d = new Date(date);
-  return d.toLocaleTimeString("id-ID", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-export function getVerifyMethod(code: number): string {
-  const methods: Record<number, string> = {
-    1: "Finger",
-    2: "Password",
-    3: "Card",
-    4: "Face",
-    5: "GPS",
-    6: "Vein",
+export function getVerifyMethod(method: number | null | undefined): string {
+  const map: Record<number, string> = {
+    0: "Password",
+    1: "Fingerprint",
+    2: "Card",
+    3: "Face",
+    4: "Vein",
+    7: "QR Code",
+    8: "Face & Finger",
   };
-  return methods[code] || "Unknown";
+  return method != null ? map[method] || `Unknown (${method})` : "-";
 }
 
-export function getStatusScan(code: number): string {
-  const statuses: Record<number, string> = {
-    0: "Scan In",
-    1: "Scan Out",
-    2: "Break In",
-    3: "Break Out",
-    4: "OT In",
-    5: "OT Out",
+export function getStatusScan(status: number | null | undefined): string {
+  const map: Record<number, string> = {
+    0: "IN",
+    1: "OUT",
+    2: "Break IN",
+    3: "Break OUT",
   };
-  return statuses[code] || "Unknown";
+  return status != null ? map[status] || `Unknown (${status})` : "-";
 }
 
-export function getStatusBadge(status: string) {
-  switch (status) {
-    case "SUCCESS":
-      return "bg-emerald-50 text-emerald-700 border-emerald-200";
-    case "PENDING":
-      return "bg-amber-50 text-amber-700 border-amber-200";
-    case "FAILED":
-      return "bg-red-50 text-red-700 border-red-200";
-    default:
-      return "bg-gray-50 text-gray-700 border-gray-200";
-  }
+export function getStatusBadge(status: string | null | undefined): string {
+  const map: Record<string, string> = {
+    SUCCESS: "success",
+    FAILED: "destructive",
+    RECEIVED: "secondary",
+    PENDING: "warning",
+  };
+  return status ? map[status] || "secondary" : "secondary";
 }
