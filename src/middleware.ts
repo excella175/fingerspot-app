@@ -8,7 +8,7 @@ const SECRET = new TextEncoder().encode(
 const PUBLIC_PREFIXES = [
   "/login",
   "/api/auth/login",
-  "/api/webhook/",
+  "/api/webhook",
   "/api/test-webhook",
   "/api/health",
 ];
