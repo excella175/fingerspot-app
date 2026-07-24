@@ -1,13 +1,17 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Search, RefreshCw, Users, ChevronLeft, ChevronRight, Pencil, Trash2, X } from "lucide-react";
+import {
+  Search, RefreshCw, Users, ChevronLeft, ChevronRight,
+  Pencil, Trash2, Upload, Download, Plus, Send,
+  CheckSquare, Square, Loader2, Database, Monitor,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 interface UserInfoEntry {
   id: string;
@@ -18,6 +22,7 @@ interface UserInfoEntry {
   face: number;
   rfid: number;
   vein: number;
+  password?: string | null;
   deviceCloudId: string | null;
   createdAt: string;
 }
@@ -30,10 +35,43 @@ export default function UserinfoPage() {
   const [search, setSearch] = useState("");
   const [syncing, setSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState("");
+
+  // Selection
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  // Edit dialog
   const [editPin, setEditPin] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState<string | null>(null);
+  const [editStatus, setEditStatus] = useState("");
+
+  // Add dialog
+  const [showAdd, setShowAdd] = useState(false);
+  const [addPin, setAddPin] = useState("");
+  const [addName, setAddName] = useState("");
+  const [addPrivilege, setAddPrivilege] = useState("1");
+  const [addPassword, setAddPassword] = useState("");
+  const [addRfid, setAddRfid] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [addStatus, setAddStatus] = useState("");
+
+  // Delete confirmation dialog
+  const [deleteDialog, setDeleteDialog] = useState<{
+    mode: "single" | "bulk";
+    pins: string[];
+  } | null>(null);
+
+  // Bulk sync to device
+  const [bulkSyncing, setBulkSyncing] = useState(false);
+
+  // Import
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
+  const [importStatus, setImportStatus] = useState("");
+
+  // Delete single
+  const [deletingPins, setDeletingPins] = useState<Set<string>>(new Set());
+
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const limit = 50;
 
@@ -52,10 +90,13 @@ export default function UserinfoPage() {
       .catch(() => setLoading(false));
   };
 
-  useEffect(() => {
-    fetchData();
-  }, [page]);
+  useEffect(() => { fetchData(); }, [page]);
 
+  useEffect(() => {
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, []);
+
+  // ---- Sync from device ----
   const handleSync = async () => {
     setSyncing(true);
     setSyncStatus("Mengirim perintah ke mesin...");
@@ -97,15 +138,28 @@ export default function UserinfoPage() {
     }
   };
 
-  useEffect(() => {
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
-  }, []);
+  // ---- Selection ----
+  const toggleSelect = (pin: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(pin)) next.delete(pin); else next.add(pin);
+      return next;
+    });
+  };
 
+  const toggleSelectAll = () => {
+    if (selected.size === data.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(data.map((d) => d.pin)));
+    }
+  };
+
+  // ---- Edit (save to DB only) ----
   const handleEdit = async () => {
     if (!editPin || !editName.trim()) return;
     setSaving(true);
+    setEditStatus("");
     try {
       const res = await fetch("/api/userinfo", {
         method: "PUT",
@@ -113,26 +167,144 @@ export default function UserinfoPage() {
         body: JSON.stringify({ pin: editPin, name: editName.trim() }),
       });
       const result = await res.json();
-      if (result.success) { setEditPin(null); fetchData(); }
-      else alert("Gagal: " + (result.error || "Unknown error"));
-    } catch { alert("Gagal menyimpan"); }
+      if (result.success) {
+        setEditStatus("✅ Tersimpan di database");
+        fetchData();
+      } else {
+        setEditStatus("❌ " + (result.error || "Gagal"));
+      }
+    } catch {
+      setEditStatus("❌ Gagal menyimpan");
+    }
     setSaving(false);
   };
 
-  const handleDelete = async (pin: string) => {
-    if (!confirm(`Yakin ingin menghapus user PIN ${pin}?`)) return;
-    setDeleting(pin);
+  // ---- Delete execution ----
+  const executeDelete = async (pins: string[], syncToDevice: boolean) => {
+    setDeleteDialog(null);
+
+    if (pins.length === 1 && !syncToDevice) {
+      // Single delete, DB only
+      setDeletingPins((prev) => new Set(prev).add(pins[0]));
+      try {
+        const res = await fetch(`/api/userinfo?pin=${pins[0]}&syncToDevice=false`, { method: "DELETE" });
+        const result = await res.json();
+        if (result.success) {
+          setSelected((prev) => { const n = new Set(prev); n.delete(pins[0]); return n; });
+          fetchData();
+        }
+      } catch {}
+      setDeletingPins((prev) => { const n = new Set(prev); n.delete(pins[0]); return n; });
+      return;
+    }
+
+    // Bulk or sync to device — use bulk endpoint
+    setDeletingPins((prev) => new Set([...prev, ...pins]));
     try {
-      const res = await fetch(`/api/userinfo?pin=${pin}`, { method: "DELETE" });
+      const res = await fetch("/api/userinfo/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pins, syncToDevice }),
+      });
       const result = await res.json();
-      if (result.success) fetchData();
-      else alert("Gagal: " + (result.error || "Unknown error"));
-    } catch { alert("Gagal menghapus"); }
-    setDeleting(null);
+      if (result.success) {
+        setSelected(new Set());
+        setPage(1);
+        fetchData();
+      }
+    } catch {}
+    setDeletingPins((prev) => {
+      const n = new Set(prev);
+      pins.forEach((p) => n.delete(p));
+      return n;
+    });
+  };
+
+  // ---- Bulk sync to device ----
+  const handleBulkSync = async () => {
+    const pins = Array.from(selected);
+    if (pins.length === 0) return;
+    setBulkSyncing(true);
+    let success = 0;
+    let failed = 0;
+    for (const pin of pins) {
+      try {
+        const res = await fetch("/api/userinfo/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pin }),
+        });
+        const result = await res.json();
+        if (result.success) success++; else failed++;
+      } catch { failed++; }
+    }
+    setBulkSyncing(false);
+    setSyncStatus(`✅ ${success} user dikirim ke mesin${failed ? `, ${failed} gagal` : ""}`);
+    setTimeout(() => setSyncStatus(""), 5000);
+  };
+
+  // ---- Add user ----
+  const handleAdd = async () => {
+    if (!addPin.trim() || !addName.trim()) return;
+    setAdding(true);
+    setAddStatus("Mengirim ke mesin...");
+    try {
+      const res = await fetch("/api/userinfo/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pin: addPin.trim(),
+          name: addName.trim(),
+          privilege: addPrivilege,
+          password: addPassword,
+          rfid: addRfid,
+        }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        setAddStatus("✅ Perintah terkirim! Tunggu webhook, data akan muncul setelah sinkron.");
+        setAddPin(""); setAddName(""); setAddPassword(""); setAddRfid("");
+        setTimeout(() => { setShowAdd(false); setAddStatus(""); }, 3000);
+      } else {
+        setAddStatus("❌ " + (result.message || result.error || "Gagal"));
+      }
+    } catch {
+      setAddStatus("❌ Gagal mengirim perintah");
+    }
+    setAdding(false);
+  };
+
+  // ---- Export Excel ----
+  const handleExport = () => {
+    const a = document.createElement("a");
+    a.href = "/api/userinfo/excel";
+    a.download = `data-user-${new Date().toISOString().split("T")[0]}.xlsx`;
+    a.click();
+  };
+
+  // ---- Import Excel ----
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    setImportStatus("Mengimport...");
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/userinfo/excel", { method: "POST", body: fd });
+      const result = await res.json();
+      setImportStatus(result.success
+        ? `✅ ${result.message}`
+        : "❌ " + (result.error || "Gagal import"));
+      if (result.success) { setPage(1); fetchData(); }
+    } catch {
+      setImportStatus("❌ Gagal import file");
+    }
+    setImporting(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const totalPages = Math.ceil(total / limit);
-
   const getPrivilegeLabel = (p: number) => {
     const labels: Record<number, string> = { 1: "User", 2: "Admin", 3: "Sub Admin" };
     return labels[p] || `Level ${p}`;
@@ -140,16 +312,39 @@ export default function UserinfoPage() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50">
           <Users className="h-5 w-5 text-violet-600" />
         </div>
-        <div>
+        <div className="flex-1">
           <h1 className="text-xl font-bold text-gray-900">Data User</h1>
           <p className="text-[13px] text-gray-400">Data user dari mesin absensi</p>
         </div>
+        <div className="flex items-center gap-2">
+          <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={handleImport} className="hidden" />
+          <Button variant="outline" onClick={handleExport} title="Export Excel">
+            <Download className="h-4 w-4 mr-1.5" /> Export
+          </Button>
+          <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={importing} title="Import Excel">
+            <Upload className="h-4 w-4 mr-1.5" /> Import
+          </Button>
+          <Button variant="outline" onClick={() => setShowAdd(true)} title="Tambah User Baru">
+            <Plus className="h-4 w-4 mr-1.5" /> Tambah
+          </Button>
+        </div>
       </div>
 
+      {importStatus && (
+        <div className={`rounded-xl p-3 text-[13px] ${
+          importStatus.startsWith("✅") ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
+        }`}>
+          {importStatus}
+          <button className="ml-2 text-[11px] underline" onClick={() => setImportStatus("")}>tutup</button>
+        </div>
+      )}
+
+      {/* Search + Sync */}
       <Card>
         <CardContent className="p-5">
           <div className="flex flex-wrap items-end gap-3">
@@ -163,16 +358,10 @@ export default function UserinfoPage() {
                 placeholder="Ketik PIN atau nama..."
               />
             </div>
-            <Button
-              variant="secondary"
-              onClick={() => { setPage(1); fetchData(); }}
-            >
+            <Button variant="secondary" onClick={() => { setPage(1); fetchData(); }}>
               <Search className="h-4 w-4 mr-1.5" /> Cari
             </Button>
-            <Button
-              onClick={handleSync}
-              disabled={syncing}
-            >
+            <Button onClick={handleSync} disabled={syncing}>
               <RefreshCw className={`h-4 w-4 mr-1.5 ${syncing ? "animate-spin" : ""}`} />
               {syncing ? "Menunggu data..." : "Ambil Data User dari Mesin"}
             </Button>
@@ -180,8 +369,7 @@ export default function UserinfoPage() {
           {syncStatus && (
             <div className={`mt-3 rounded-xl p-3 text-[13px] ${
               syncStatus.startsWith("✅") ? "bg-green-50 text-green-700" :
-              syncStatus.startsWith("❌") ? "bg-red-50 text-red-700" :
-              "bg-blue-50 text-blue-700"
+              syncStatus.startsWith("❌") ? "bg-red-50 text-red-700" : "bg-blue-50 text-blue-700"
             }`}>
               {syncStatus}
             </div>
@@ -189,10 +377,48 @@ export default function UserinfoPage() {
         </CardContent>
       </Card>
 
+      {/* Bulk action bar */}
+      {selected.size > 0 && (
+        <div className="flex items-center justify-between rounded-2xl border border-blue-100 bg-blue-50/50 px-5 py-3">
+          <span className="text-[13px] font-medium text-blue-700">
+            {selected.size} user terpilih
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary" size="sm"
+              onClick={handleBulkSync}
+              disabled={bulkSyncing}
+            >
+              {bulkSyncing
+                ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                : <Monitor className="h-4 w-4 mr-1.5" />
+              }
+              Turunkan ke Mesin
+            </Button>
+            <Button
+              variant="destructive" size="sm"
+              onClick={() => setDeleteDialog({ mode: "bulk", pins: Array.from(selected) })}
+            >
+              <Trash2 className="h-4 w-4 mr-1.5" />
+              Hapus
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Table */}
       <Card className="overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10">
+                <button onClick={toggleSelectAll} className="p-0.5">
+                  {selected.size === data.length && data.length > 0
+                    ? <CheckSquare className="h-4 w-4 text-blue-600" />
+                    : <Square className="h-4 w-4 text-gray-400" />
+                  }
+                </button>
+              </TableHead>
               <TableHead>PIN</TableHead>
               <TableHead>Nama</TableHead>
               <TableHead>Privilege</TableHead>
@@ -206,7 +432,7 @@ export default function UserinfoPage() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={8} className="h-48 text-center text-muted-foreground">
+                <TableCell colSpan={10} className="h-48 text-center text-muted-foreground">
                   <div className="flex items-center justify-center gap-2">
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" /> Memuat...
                   </div>
@@ -214,12 +440,20 @@ export default function UserinfoPage() {
               </TableRow>
             ) : data.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="h-48 text-center text-muted-foreground">
+                <TableCell colSpan={10} className="h-48 text-center text-muted-foreground">
                   Tidak ada data. Klik &quot;Ambil Data User dari Mesin&quot; untuk mengambil data.
                 </TableCell>
               </TableRow>
             ) : data.map((row) => (
               <TableRow key={row.id}>
+                <TableCell>
+                  <button onClick={() => toggleSelect(row.pin)} className="p-0.5">
+                    {selected.has(row.pin)
+                      ? <CheckSquare className="h-4 w-4 text-blue-600" />
+                      : <Square className="h-4 w-4 text-gray-400" />
+                    }
+                  </button>
+                </TableCell>
                 <TableCell className="font-mono">{row.pin}</TableCell>
                 <TableCell className="font-medium">{row.name}</TableCell>
                 <TableCell>
@@ -234,21 +468,19 @@ export default function UserinfoPage() {
                 <TableCell className="text-center">
                   <div className="flex items-center justify-center gap-1">
                     <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => { setEditPin(row.pin); setEditName(row.name); }}
+                      variant="ghost" size="icon"
+                      onClick={() => { setEditPin(row.pin); setEditName(row.name); setEditStatus(""); }}
                       title="Edit nama"
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
                     <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDelete(row.pin)}
-                      disabled={deleting === row.pin}
+                      variant="ghost" size="icon"
+                      onClick={() => setDeleteDialog({ mode: "single", pins: [row.pin] })}
+                      disabled={deletingPins.has(row.pin)}
                       title="Hapus user"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <Trash2 className={`h-3.5 w-3.5 ${deletingPins.has(row.pin) ? "animate-pulse" : ""}`} />
                     </Button>
                   </div>
                 </TableCell>
@@ -272,10 +504,12 @@ export default function UserinfoPage() {
         )}
       </Card>
 
-      <Dialog open={!!editPin} onOpenChange={(open) => { if (!open) setEditPin(null); }}>
+      {/* Edit Dialog */}
+      <Dialog open={!!editPin} onOpenChange={(open) => { if (!open) { setEditPin(null); setEditStatus(""); } }}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Edit Nama User</DialogTitle>
+            <DialogTitle>Edit User</DialogTitle>
+            <DialogDescription>Edit nama user. Data hanya disimpan di database. Untuk mengirim ke mesin, centang user lalu klik &quot;Turunkan ke Mesin&quot;.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -292,12 +526,104 @@ export default function UserinfoPage() {
                 autoFocus
               />
             </div>
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setEditPin(null)}>Batal</Button>
-              <Button onClick={handleEdit} disabled={saving || !editName.trim()}>
+            {editStatus && (
+              <div className="text-[13px] text-green-600">{editStatus}</div>
+            )}
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => { setEditPin(null); setEditStatus(""); }}>
+                Batal
+              </Button>
+              <Button className="flex-1" onClick={handleEdit} disabled={saving || !editName.trim()}>
                 {saving ? "Menyimpan..." : "Simpan"}
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add User Dialog */}
+      <Dialog open={showAdd} onOpenChange={(open) => { if (!open) { setShowAdd(false); setAddStatus(""); } }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Tambah User Baru</DialogTitle>
+            <DialogDescription>Data akan dikirim ke mesin absensi via set_userinfo.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-[13px] font-medium text-muted-foreground mb-1">PIN*</label>
+              <Input type="text" value={addPin} onChange={(e) => setAddPin(e.target.value)} placeholder="Contoh: 1001" autoFocus />
+            </div>
+            <div>
+              <label className="block text-[13px] font-medium text-muted-foreground mb-1">Nama*</label>
+              <Input type="text" value={addName} onChange={(e) => setAddName(e.target.value)} placeholder="Nama lengkap" />
+            </div>
+            <div>
+              <label className="block text-[13px] font-medium text-muted-foreground mb-1">Privilege</label>
+              <select value={addPrivilege} onChange={(e) => setAddPrivilege(e.target.value)}
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-[13px] focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500">
+                <option value="1">User</option>
+                <option value="2">Admin</option>
+                <option value="3">Sub Admin</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[13px] font-medium text-muted-foreground mb-1">Password</label>
+              <Input type="text" value={addPassword} onChange={(e) => setAddPassword(e.target.value)} placeholder="Kosongkan jika tidak ada" />
+            </div>
+            <div>
+              <label className="block text-[13px] font-medium text-muted-foreground mb-1">RFID / Card</label>
+              <Input type="text" value={addRfid} onChange={(e) => setAddRfid(e.target.value)} placeholder="Kosongkan jika tidak ada" />
+            </div>
+            {addStatus && (
+              <div className={`text-[13px] ${addStatus.startsWith("✅") ? "text-green-600" : addStatus.startsWith("❌") ? "text-red-600" : "text-blue-600"}`}>
+                {addStatus}
+              </div>
+            )}
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => { setShowAdd(false); setAddStatus(""); }}>
+                Batal
+              </Button>
+              <Button className="flex-1" onClick={handleAdd} disabled={adding || !addPin.trim() || !addName.trim()}>
+                {adding ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />}
+                {adding ? "Mengirim..." : "Tambah & Kirim ke Mesin"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deleteDialog} onOpenChange={(open) => { if (!open) setDeleteDialog(null); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Hapus User</DialogTitle>
+            <DialogDescription>
+              {deleteDialog?.pins.length === 1
+                ? `Yakin ingin menghapus user PIN ${deleteDialog.pins[0]}?`
+                : `Yakin ingin menghapus ${deleteDialog?.pins.length} user?`
+              }
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Button
+              variant="destructive"
+              className="w-full justify-start gap-3"
+              onClick={() => deleteDialog && executeDelete(deleteDialog.pins, true)}
+            >
+              <Monitor className="h-4 w-4" />
+              Hapus dari Database &amp; Mesin
+            </Button>
+            <Button
+              variant="secondary"
+              className="w-full justify-start gap-3"
+              onClick={() => deleteDialog && executeDelete(deleteDialog.pins, false)}
+            >
+              <Database className="h-4 w-4" />
+              Hapus dari Database saja
+            </Button>
+            <Button variant="outline" className="w-full" onClick={() => setDeleteDialog(null)}>
+              Batal
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

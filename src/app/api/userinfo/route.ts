@@ -71,6 +71,7 @@ export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const pin = searchParams.get("pin");
+    const syncToDevice = searchParams.get("syncToDevice") !== "false";
 
     if (!pin) {
       return NextResponse.json(
@@ -87,9 +88,22 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    // 1. Delete from local DB
     await prisma.userInfo.delete({ where: { pin } });
 
-    return NextResponse.json({ success: true });
+    // 2. Send delete_userinfo to device if requested
+    if (syncToDevice) {
+      const apiKey = process.env.FINGERSPOT_API_KEY || "";
+      const apiUrl = process.env.FINGERSPOT_API_URL || "https://developer.fingerspot.io/api";
+      const cloudId = process.env.FINGERSPOT_CLOUD_ID || "";
+      fetch(`${apiUrl}/delete_userinfo`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ cloud_id: cloudId, trans_id: `del-${Date.now()}-${pin}`, pin }),
+      }).catch(() => {});
+    }
+
+    return NextResponse.json({ success: true, syncedToDevice: syncToDevice });
   } catch (error) {
     return NextResponse.json(
       { success: false, error: "Gagal menghapus user" },
