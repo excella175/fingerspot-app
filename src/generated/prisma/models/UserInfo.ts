@@ -53,6 +53,7 @@ export type UserInfoMinAggregateOutputType = {
   rfid: number | null
   vein: number | null
   template: string | null
+  facePhoto: string | null
   deviceCloudId: string | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -69,6 +70,7 @@ export type UserInfoMaxAggregateOutputType = {
   rfid: number | null
   vein: number | null
   template: string | null
+  facePhoto: string | null
   deviceCloudId: string | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -85,6 +87,7 @@ export type UserInfoCountAggregateOutputType = {
   rfid: number
   vein: number
   template: number
+  facePhoto: number
   deviceCloudId: number
   rawPayload: number
   createdAt: number
@@ -120,6 +123,7 @@ export type UserInfoMinAggregateInputType = {
   rfid?: true
   vein?: true
   template?: true
+  facePhoto?: true
   deviceCloudId?: true
   createdAt?: true
   updatedAt?: true
@@ -136,6 +140,7 @@ export type UserInfoMaxAggregateInputType = {
   rfid?: true
   vein?: true
   template?: true
+  facePhoto?: true
   deviceCloudId?: true
   createdAt?: true
   updatedAt?: true
@@ -152,6 +157,7 @@ export type UserInfoCountAggregateInputType = {
   rfid?: true
   vein?: true
   template?: true
+  facePhoto?: true
   deviceCloudId?: true
   rawPayload?: true
   createdAt?: true
@@ -256,6 +262,7 @@ export type UserInfoGroupByOutputType = {
   rfid: number
   vein: number
   template: string | null
+  facePhoto: string | null
   deviceCloudId: string | null
   rawPayload: runtime.JsonValue | null
   createdAt: Date
@@ -296,6 +303,7 @@ export type UserInfoWhereInput = {
   rfid?: Prisma.IntFilter<"UserInfo"> | number
   vein?: Prisma.IntFilter<"UserInfo"> | number
   template?: Prisma.StringNullableFilter<"UserInfo"> | string | null
+  facePhoto?: Prisma.StringNullableFilter<"UserInfo"> | string | null
   deviceCloudId?: Prisma.StringNullableFilter<"UserInfo"> | string | null
   rawPayload?: Prisma.JsonNullableFilter<"UserInfo">
   createdAt?: Prisma.DateTimeFilter<"UserInfo"> | Date | string
@@ -313,6 +321,7 @@ export type UserInfoOrderByWithRelationInput = {
   rfid?: Prisma.SortOrder
   vein?: Prisma.SortOrder
   template?: Prisma.SortOrderInput | Prisma.SortOrder
+  facePhoto?: Prisma.SortOrderInput | Prisma.SortOrder
   deviceCloudId?: Prisma.SortOrderInput | Prisma.SortOrder
   rawPayload?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -333,6 +342,7 @@ export type UserInfoWhereUniqueInput = Prisma.AtLeast<{
   rfid?: Prisma.IntFilter<"UserInfo"> | number
   vein?: Prisma.IntFilter<"UserInfo"> | number
   template?: Prisma.StringNullableFilter<"UserInfo"> | string | null
+  facePhoto?: Prisma.StringNullableFilter<"UserInfo"> | string | null
   deviceCloudId?: Prisma.StringNullableFilter<"UserInfo"> | string | null
   rawPayload?: Prisma.JsonNullableFilter<"UserInfo">
   createdAt?: Prisma.DateTimeFilter<"UserInfo"> | Date | string
@@ -350,6 +360,7 @@ export type UserInfoOrderByWithAggregationInput = {
   rfid?: Prisma.SortOrder
   vein?: Prisma.SortOrder
   template?: Prisma.SortOrderInput | Prisma.SortOrder
+  facePhoto?: Prisma.SortOrderInput | Prisma.SortOrder
   deviceCloudId?: Prisma.SortOrderInput | Prisma.SortOrder
   rawPayload?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -375,6 +386,7 @@ export type UserInfoScalarWhereWithAggregatesInput = {
   rfid?: Prisma.IntWithAggregatesFilter<"UserInfo"> | number
   vein?: Prisma.IntWithAggregatesFilter<"UserInfo"> | number
   template?: Prisma.StringNullableWithAggregatesFilter<"UserInfo"> | string | null
+  facePhoto?: Prisma.StringNullableWithAggregatesFilter<"UserInfo"> | string | null
   deviceCloudId?: Prisma.StringNullableWithAggregatesFilter<"UserInfo"> | string | null
   rawPayload?: Prisma.JsonNullableWithAggregatesFilter<"UserInfo">
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"UserInfo"> | Date | string
@@ -392,6 +404,7 @@ export type UserInfoCreateInput = {
   rfid?: number
   vein?: number
   template?: string | null
+  facePhoto?: string | null
   deviceCloudId?: string | null
   rawPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
@@ -409,6 +422,7 @@ export type UserInfoUncheckedCreateInput = {
   rfid?: number
   vein?: number
   template?: string | null
+  facePhoto?: string | null
   deviceCloudId?: string | null
   rawPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
@@ -426,6 +440,7 @@ export type UserInfoUpdateInput = {
   rfid?: Prisma.IntFieldUpdateOperationsInput | number
   vein?: Prisma.IntFieldUpdateOperationsInput | number
   template?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  facePhoto?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deviceCloudId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   rawPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -443,6 +458,7 @@ export type UserInfoUncheckedUpdateInput = {
   rfid?: Prisma.IntFieldUpdateOperationsInput | number
   vein?: Prisma.IntFieldUpdateOperationsInput | number
   template?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  facePhoto?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deviceCloudId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   rawPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -460,6 +476,7 @@ export type UserInfoCreateManyInput = {
   rfid?: number
   vein?: number
   template?: string | null
+  facePhoto?: string | null
   deviceCloudId?: string | null
   rawPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
@@ -477,6 +494,7 @@ export type UserInfoUpdateManyMutationInput = {
   rfid?: Prisma.IntFieldUpdateOperationsInput | number
   vein?: Prisma.IntFieldUpdateOperationsInput | number
   template?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  facePhoto?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deviceCloudId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   rawPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -494,6 +512,7 @@ export type UserInfoUncheckedUpdateManyInput = {
   rfid?: Prisma.IntFieldUpdateOperationsInput | number
   vein?: Prisma.IntFieldUpdateOperationsInput | number
   template?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  facePhoto?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deviceCloudId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   rawPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -511,6 +530,7 @@ export type UserInfoCountOrderByAggregateInput = {
   rfid?: Prisma.SortOrder
   vein?: Prisma.SortOrder
   template?: Prisma.SortOrder
+  facePhoto?: Prisma.SortOrder
   deviceCloudId?: Prisma.SortOrder
   rawPayload?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -536,6 +556,7 @@ export type UserInfoMaxOrderByAggregateInput = {
   rfid?: Prisma.SortOrder
   vein?: Prisma.SortOrder
   template?: Prisma.SortOrder
+  facePhoto?: Prisma.SortOrder
   deviceCloudId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -552,6 +573,7 @@ export type UserInfoMinOrderByAggregateInput = {
   rfid?: Prisma.SortOrder
   vein?: Prisma.SortOrder
   template?: Prisma.SortOrder
+  facePhoto?: Prisma.SortOrder
   deviceCloudId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -590,6 +612,7 @@ export type UserInfoSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   rfid?: boolean
   vein?: boolean
   template?: boolean
+  facePhoto?: boolean
   deviceCloudId?: boolean
   rawPayload?: boolean
   createdAt?: boolean
@@ -607,6 +630,7 @@ export type UserInfoSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exte
   rfid?: boolean
   vein?: boolean
   template?: boolean
+  facePhoto?: boolean
   deviceCloudId?: boolean
   rawPayload?: boolean
   createdAt?: boolean
@@ -624,6 +648,7 @@ export type UserInfoSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exte
   rfid?: boolean
   vein?: boolean
   template?: boolean
+  facePhoto?: boolean
   deviceCloudId?: boolean
   rawPayload?: boolean
   createdAt?: boolean
@@ -641,13 +666,14 @@ export type UserInfoSelectScalar = {
   rfid?: boolean
   vein?: boolean
   template?: boolean
+  facePhoto?: boolean
   deviceCloudId?: boolean
   rawPayload?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type UserInfoOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "pin" | "name" | "password" | "privilege" | "finger" | "face" | "rfid" | "vein" | "template" | "deviceCloudId" | "rawPayload" | "createdAt" | "updatedAt", ExtArgs["result"]["userInfo"]>
+export type UserInfoOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "pin" | "name" | "password" | "privilege" | "finger" | "face" | "rfid" | "vein" | "template" | "facePhoto" | "deviceCloudId" | "rawPayload" | "createdAt" | "updatedAt", ExtArgs["result"]["userInfo"]>
 
 export type $UserInfoPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "UserInfo"
@@ -663,6 +689,7 @@ export type $UserInfoPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     rfid: number
     vein: number
     template: string | null
+    facePhoto: string | null
     deviceCloudId: string | null
     rawPayload: runtime.JsonValue | null
     createdAt: Date
@@ -1100,6 +1127,7 @@ export interface UserInfoFieldRefs {
   readonly rfid: Prisma.FieldRef<"UserInfo", 'Int'>
   readonly vein: Prisma.FieldRef<"UserInfo", 'Int'>
   readonly template: Prisma.FieldRef<"UserInfo", 'String'>
+  readonly facePhoto: Prisma.FieldRef<"UserInfo", 'String'>
   readonly deviceCloudId: Prisma.FieldRef<"UserInfo", 'String'>
   readonly rawPayload: Prisma.FieldRef<"UserInfo", 'Json'>
   readonly createdAt: Prisma.FieldRef<"UserInfo", 'DateTime'>

@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const { pin, name } = await request.json();
+    const { pin, name, facePhoto } = await request.json();
     if (!pin || !name) {
       return NextResponse.json(
         { success: false, error: "PIN dan nama harus diisi" },
@@ -53,9 +53,14 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    const data: any = { name: String(name) };
+    if (facePhoto !== undefined) {
+      data.facePhoto = facePhoto || null;
+    }
+
     await prisma.userInfo.update({
       where: { pin },
-      data: { name: String(name) },
+      data,
     });
 
     return NextResponse.json({ success: true });

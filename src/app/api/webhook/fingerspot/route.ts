@@ -86,10 +86,15 @@ export async function POST(request: NextRequest) {
         const pin = row?.PIN ?? row?.pin ?? row?.UserID ?? row?.user_id ?? row?.userId;
         if (pin == null) continue;
         const name = row?.Name ?? row?.name ?? row?.UserName ?? row?.username;
+        const template = row?.Template ?? row?.template ?? null;
         try {
           await prisma.userInfo.upsert({
             where: { pin: String(pin) },
-            update: { ...(name ? { name: String(name) } : {}), deviceCloudId: cloudId },
+            update: {
+              ...(name ? { name: String(name) } : {}),
+              ...(template ? { template: String(template) } : {}),
+              deviceCloudId: cloudId,
+            },
             create: {
               pin: String(pin),
               name: name ? String(name) : "Unknown",

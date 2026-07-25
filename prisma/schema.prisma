@@ -58,6 +58,7 @@ model UserInfo {
   rfid        Int      @default(0)
   vein        Int      @default(0)
   template    String?
+  facePhoto   String?   @map("face_photo")
   deviceCloudId String? @map("device_cloud_id")
   rawPayload  Json?    @map("raw_payload")
   createdAt   DateTime @default(now()) @map("created_at")

@@ -13,6 +13,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "User tidak ditemukan" }, { status: 404 });
     }
 
+    // Build template:
+    // 1. If facePhoto exists, create double-base64 face template
+    // 2. Else if existing template from webhook, use it
+    // 3. Else empty string
+    let template = "";
+    if (user.facePhoto) {
+      // Double base64: encode {"face":"<base64_jpeg>"} in base64
+      const facePayload = JSON.stringify({ face: user.facePhoto });
+      template = Buffer.from(facePayload, "utf-8").toString("base64");
+    } else if (user.template) {
+      template = user.template;
+    }
+
     const apiKey = process.env.FINGERSPOT_API_KEY || "";
     const apiUrl = process.env.FINGERSPOT_API_URL || "https://developer.fingerspot.io/api";
     const cloudId = process.env.FINGERSPOT_CLOUD_ID || "";
@@ -29,7 +42,7 @@ export async function POST(request: NextRequest) {
           privilege: String(user.privilege ?? 1),
           password: user.password || "",
           rfid: String(user.rfid ?? ""),
-          template: "",
+          template,
         },
       }),
     });

@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import {
   Search, RefreshCw, Users, ChevronLeft, ChevronRight,
-  Pencil, Trash2, Upload, Download, Plus, Send,
+  Pencil, Trash2, Upload, Download, Plus,
   CheckSquare, Square, Loader2, Database, Monitor,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,8 @@ interface UserInfoEntry {
   rfid: number;
   vein: number;
   password?: string | null;
+  facePhoto?: string | null;
+  template?: string | null;
   deviceCloudId: string | null;
   createdAt: string;
 }
@@ -42,8 +44,11 @@ export default function UserinfoPage() {
   // Edit dialog
   const [editPin, setEditPin] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  const [editFacePhoto, setEditFacePhoto] = useState<string | null>(null);
+  const [editFacePreview, setEditFacePreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [editStatus, setEditStatus] = useState("");
+  const editFileRef = useRef<HTMLInputElement>(null);
 
   // Add dialog
   const [showAdd, setShowAdd] = useState(false);
@@ -164,7 +169,11 @@ export default function UserinfoPage() {
       const res = await fetch("/api/userinfo", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pin: editPin, name: editName.trim() }),
+        body: JSON.stringify({
+          pin: editPin,
+          name: editName.trim(),
+          facePhoto: editFacePhoto || null,
+        }),
       });
       const result = await res.json();
       if (result.success) {
@@ -177,6 +186,31 @@ export default function UserinfoPage() {
       setEditStatus("❌ Gagal menyimpan");
     }
     setSaving(false);
+  };
+
+  // ---- Face photo upload ----
+  const handleFaceUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/jpeg") && !file.type.startsWith("image/png")) {
+      alert("Hanya file JPEG/PNG yang diizinkan");
+      return;
+    }
+
+    if (file.size > 100 * 1024) {
+      alert("Foto maksimal 100KB");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = (reader.result as string).split(",")[1]; // remove data:image/... prefix
+      setEditFacePhoto(base64);
+      setEditFacePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+    if (editFileRef.current) editFileRef.current.value = "";
   };
 
   // ---- Delete execution ----
@@ -469,7 +503,13 @@ export default function UserinfoPage() {
                   <div className="flex items-center justify-center gap-1">
                     <Button
                       variant="ghost" size="icon"
-                      onClick={() => { setEditPin(row.pin); setEditName(row.name); setEditStatus(""); }}
+                      onClick={() => {
+                        setEditPin(row.pin);
+                        setEditName(row.name);
+                        setEditFacePhoto(row.facePhoto || null);
+                        setEditFacePreview(row.facePhoto ? `data:image/jpeg;base64,${row.facePhoto}` : null);
+                        setEditStatus("");
+                      }}
                       title="Edit nama"
                     >
                       <Pencil className="h-3.5 w-3.5" />
@@ -526,6 +566,44 @@ export default function UserinfoPage() {
                 autoFocus
               />
             </div>
+
+            {/* Face Photo */}
+            <div>
+              <label className="block text-[13px] font-medium text-muted-foreground mb-1.5">Foto Wajah</label>
+              <input
+                ref={editFileRef}
+                type="file"
+                accept=".jpg,.jpeg,.png"
+                onChange={handleFaceUpload}
+                className="hidden"
+              />
+              {editFacePreview ? (
+                <div className="space-y-2">
+                  <img
+                    src={editFacePreview}
+                    alt="Face preview"
+                    className="h-32 w-32 rounded-xl border object-cover"
+                  />
+                  <div className="flex gap-2">
+                    <Button variant="secondary" size="sm" onClick={() => editFileRef.current?.click()}>
+                      Ganti Foto
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => { setEditFacePhoto(null); setEditFacePreview(null); }}>
+                      Hapus Foto
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button variant="outline" size="sm" onClick={() => editFileRef.current?.click()}>
+                  <Upload className="h-3.5 w-3.5 mr-1.5" />
+                  Upload Foto Wajah
+                </Button>
+              )}
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Format JPEG/PNG, maks 100 KB, close-up wajah
+              </p>
+            </div>
+
             {editStatus && (
               <div className="text-[13px] text-green-600">{editStatus}</div>
             )}

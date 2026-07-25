@@ -1608,6 +1608,7 @@ export const UserInfoScalarFieldEnum = {
   rfid: 'rfid',
   vein: 'vein',
   template: 'template',
+  facePhoto: 'facePhoto',
   deviceCloudId: 'deviceCloudId',
   rawPayload: 'rawPayload',
   createdAt: 'createdAt',
