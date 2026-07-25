@@ -2,18 +2,13 @@
 
 import { useEffect, useState } from "react";
 import {
-  Fingerprint,
-  Users,
-  ScrollText,
-  Webhook,
-  Activity,
-  Clock,
-  ArrowUpRight,
-  Zap,
+  Fingerprint, Users, ScrollText, Webhook, Activity,
+  Clock, ArrowUpRight, Zap, Database, Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 interface Stats {
   totalAttlog: number;
@@ -27,6 +22,8 @@ interface Stats {
 export default function Dashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [seeding, setSeeding] = useState(false);
+  const [seedMsg, setSeedMsg] = useState("");
 
   useEffect(() => {
     fetch("/api/stats")
@@ -37,6 +34,22 @@ export default function Dashboard() {
       })
       .catch(() => setLoading(false));
   }, []);
+
+  const handleSeed = async () => {
+    setSeeding(true);
+    setSeedMsg("Membuat data sample...");
+    try {
+      const res = await fetch("/api/seed-sample");
+      const data = await res.json();
+      setSeedMsg(data.success ? "✅ " + data.message : "❌ " + (data.error || "Gagal"));
+    } catch {
+      setSeedMsg("❌ Gagal membuat data sample");
+    }
+    setSeeding(false);
+    // Refresh stats
+    fetch("/api/stats").then((r) => r.json()).then((d) => setStats(d)).catch(() => {});
+    setTimeout(() => setSeedMsg(""), 6000);
+  };
 
   if (loading) {
     return (
@@ -158,11 +171,39 @@ export default function Dashboard() {
               </p>
             </div>
           </div>
-          <div className="mt-4 rounded-xl bg-muted px-4 py-3 font-mono text-[13px] text-foreground/60">
-            {typeof window !== "undefined"
-              ? `${window.location.origin}/api/webhook/fingerspot`
-              : "/api/webhook/fingerspot"}
+          <div className="mt-4 select-all rounded-xl bg-muted px-4 py-3 font-mono text-[13px] text-foreground/60">
+            https://fingerspot-app.vercel.app/api/webhook/fingerspot
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Seed Data */}
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted">
+              <Database className="h-5 w-5 text-amber-600" />
+            </div>
+            <div className="flex-1">
+              <h2 className="text-sm font-semibold text-foreground">
+                Data Sample / Demo
+              </h2>
+              <p className="text-[13px] text-muted-foreground">
+                Buat sample data absensi, aturan, jadwal, dan karyawan untuk demo
+              </p>
+            </div>
+            <Button onClick={handleSeed} disabled={seeding}>
+              {seeding && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
+              {seeding ? "Memproses..." : "Generate Sample Data"}
+            </Button>
+          </div>
+          {seedMsg && (
+            <div className={`mt-3 rounded-xl p-3 text-[13px] ${
+              seedMsg.startsWith("✅") ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
+            }`}>
+              {seedMsg}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
