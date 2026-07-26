@@ -85,14 +85,14 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="fixed left-0 top-0 z-40 flex h-screen w-64 flex-col border-r bg-background">
-      <div className="flex h-16 items-center gap-3 border-b px-6">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 shadow-sm shadow-blue-200">
+    <aside className="fixed left-0 top-0 z-40 flex h-screen w-64 flex-col border-r border-gray-200/50 bg-gradient-to-b from-white to-gray-50/50">
+      <div className="flex h-16 items-center gap-3 border-b border-gray-200/50 bg-gradient-to-r from-blue-600 to-indigo-600 px-6">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/20 shadow-sm backdrop-blur-sm">
           <FingerprintIcon className="h-5 w-5 text-white" />
         </div>
         <div>
-          <span className="text-sm font-bold tracking-tight text-foreground">Fingerspot</span>
-          <p className="text-[10px] font-medium text-muted-foreground">Attendance System</p>
+          <span className="text-sm font-bold tracking-tight text-white">Fingerspot</span>
+          <p className="text-[10px] font-medium text-blue-100">Attendance System</p>
         </div>
       </div>
       <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
