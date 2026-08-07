@@ -1,21 +1,45 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-function getDaysInMonth(year: number, month: number) {
-  return new Date(year, month, 0).getDate();
-}
-
 function pad(n: number) {
   return n.toString().padStart(2, "0");
 }
 
-function dayName(year: number, month: number, day: number) {
-  return ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"][new Date(year, month - 1, day).getDay()];
+function dayNameFromDate(date: Date) {
+  return ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"][date.getDay()];
 }
 
-function isWeekend(year: number, month: number, day: number) {
-  const d = new Date(year, month - 1, day).getDay();
+function isWeekendFromDate(date: Date) {
+  const d = date.getDay();
   return d === 0 || d === 6;
+}
+
+function dateRangeFromParams(searchParams: URLSearchParams): { dates: Date[]; dateStrs: string[]; from: string; to: string; isMonth: boolean; month: number; year: number } {
+  const f = searchParams.get("from");
+  const t = searchParams.get("to");
+  if (f && t) {
+    const start = new Date(f + "T00:00:00+07:00");
+    const end = new Date(t + "T00:00:00+07:00");
+    const dates: Date[] = [];
+    const dateStrs: string[] = [];
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      dates.push(new Date(d));
+      dateStrs.push(d.toISOString().split("T")[0]);
+    }
+    return { dates, dateStrs, from: f, to: t, isMonth: false, month: 0, year: 0 };
+  }
+  const month = parseInt(searchParams.get("month") || "");
+  const year = parseInt(searchParams.get("year") || "");
+  const m = month || new Date().getMonth() + 1;
+  const y = year || new Date().getFullYear();
+  const totalDays = new Date(y, m, 0).getDate();
+  const dates: Date[] = [];
+  const dateStrs: string[] = [];
+  for (let day = 1; day <= totalDays; day++) {
+    dates.push(new Date(y, m - 1, day));
+    dateStrs.push(`${y}-${pad(m)}-${pad(day)}`);
+  }
+  return { dates, dateStrs, from: `${y}-${pad(m)}-01`, to: `${y}-${pad(m)}-${pad(totalDays)}`, isMonth: true, month: m, year: y };
 }
 
 function toMinutes(s: string): number {
@@ -53,28 +77,22 @@ async function getScheduleForEmployee(pin: string, date: Date, dayOfWeek: number
 }
 
 async function handleDetail(searchParams: URLSearchParams) {
-  const month = parseInt(searchParams.get("month") || "");
-  const year = parseInt(searchParams.get("year") || "");
+  const { dates, dateStrs, from, to, isMonth, month, year } = dateRangeFromParams(searchParams);
   const employeePin = searchParams.get("employeePin") || "";
-  if (!month || !year || month < 1 || month > 12) {
-    return NextResponse.json({ success: false, error: "month (1-12) dan year wajib" }, { status: 400 });
-  }
 
   const employees = employeePin
     ? [{ pin: employeePin }]
     : await prisma.userInfo.findMany({ select: { pin: true, name: true } });
 
-  const totalDays = getDaysInMonth(year, month);
   const result: any[] = [];
 
   for (const emp of employees) {
     const empData = await prisma.userInfo.findUnique({ where: { pin: emp.pin }, select: { name: true } });
     const empName = empData?.name || emp.pin;
 
-    for (let day = 1; day <= totalDays; day++) {
-      const date = new Date(year, month - 1, day);
-      const dow = date.getDay();
-      const dateStr = `${year}-${pad(month)}-${pad(day)}`;
+    for (let i = 0; i < dates.length; i++) {
+      const date = dates[i];
+      const dateStr = dateStrs[i];
 
       // Leave/Izin check
       const leave = await prisma.riwayatIzinCuti.findFirst({
@@ -89,17 +107,17 @@ async function handleDetail(searchParams: URLSearchParams) {
       if (leave) {
         const master = await prisma.masterIzinCuti.findUnique({ where: { id: leave.masterIzinId } });
         const statusCode = master?.statusAbsensi || "I";
-        result.push({ employeePin: emp.pin, employeeName: empName, date: dateStr, dayName: dayName(year, month, day), status: statusCode, scanIn: null, scanOut: null, scheduledStart: null, scheduledEnd: null, lateMinutes: null, earlyLeaveMinutes: null, overtimeMinutes: null, note: master?.nama || "Izin" });
+        result.push({ employeePin: emp.pin, employeeName: empName, date: dateStr, dayName: dayNameFromDate(date), status: statusCode, scanIn: null, scanOut: null, scheduledStart: null, scheduledEnd: null, lateMinutes: null, earlyLeaveMinutes: null, overtimeMinutes: null, note: master?.nama || "Izin" });
         continue;
       }
 
-      if (isWeekend(year, month, day)) {
-        result.push({ employeePin: emp.pin, employeeName: empName, date: dateStr, dayName: dayName(year, month, day), status: "L", scanIn: null, scanOut: null, scheduledStart: null, scheduledEnd: null, lateMinutes: null, earlyLeaveMinutes: null, overtimeMinutes: null, note: "Libur" });
+      if (isWeekendFromDate(date)) {
+        result.push({ employeePin: emp.pin, employeeName: empName, date: dateStr, dayName: dayNameFromDate(date), status: "L", scanIn: null, scanOut: null, scheduledStart: null, scheduledEnd: null, lateMinutes: null, earlyLeaveMinutes: null, overtimeMinutes: null, note: "Libur" });
         continue;
       }
 
       // Get schedule
-      const sched = await getScheduleForEmployee(emp.pin, date, dow);
+      const sched = await getScheduleForEmployee(emp.pin, date, date.getDay());
       const jamKerja = sched?.jamKerjaKode
         ? await prisma.jamKerja.findUnique({ where: { kode: sched.jamKerjaKode } })
         : null;
@@ -120,7 +138,7 @@ async function handleDetail(searchParams: URLSearchParams) {
       });
 
       if (scans.length === 0) {
-        result.push({ employeePin: emp.pin, employeeName: empName, date: dateStr, dayName: dayName(year, month, day), status: "A", scanIn: null, scanOut: null, scheduledStart, scheduledEnd, lateMinutes: null, earlyLeaveMinutes: null, overtimeMinutes: null, note: "Alpha" });
+        result.push({ employeePin: emp.pin, employeeName: empName, date: dateStr, dayName: dayNameFromDate(date), status: "A", scanIn: null, scanOut: null, scheduledStart, scheduledEnd, lateMinutes: null, earlyLeaveMinutes: null, overtimeMinutes: null, note: "Alpha" });
         continue;
       }
 
@@ -189,7 +207,7 @@ async function handleDetail(searchParams: URLSearchParams) {
         employeePin: emp.pin,
         employeeName: empName,
         date: dateStr,
-        dayName: dayName(year, month, day),
+        dayName: dayNameFromDate(date),
         status,
         scanIn: firstScan.toISOString(),
         scanOut: lastScan.toISOString(),
@@ -203,17 +221,12 @@ async function handleDetail(searchParams: URLSearchParams) {
     }
   }
 
-  return NextResponse.json({ success: true, report: result, totalDays });
+  return NextResponse.json({ success: true, report: result, totalDays: dates.length });
 }
 
 async function handleAttendance(searchParams: URLSearchParams) {
-  const month = parseInt(searchParams.get("month") || "");
-  const year = parseInt(searchParams.get("year") || "");
-  if (!month || !year || month < 1 || month > 12) {
-    return NextResponse.json({ success: false, error: "month (1-12) dan year wajib" }, { status: 400 });
-  }
+  const { dates, dateStrs, from, to, isMonth, month, year } = dateRangeFromParams(searchParams);
 
-  const totalDays = getDaysInMonth(year, month);
   const employees = await prisma.userInfo.findMany({ select: { pin: true, name: true }, orderBy: { name: "asc" } });
   const report: any[] = [];
 
@@ -221,16 +234,15 @@ async function handleAttendance(searchParams: URLSearchParams) {
     const days: any[] = [];
     const totals: Record<string, number> = { H: 0, A: 0, I: 0, S: 0, C: 0, D: 0, TL: 0, PL: 0, L: 0 };
 
-    for (let day = 1; day <= totalDays; day++) {
-      const date = new Date(year, month - 1, day);
-      const dow = date.getDay();
-      const dateStr = `${year}-${pad(month)}-${pad(day)}`;
+    for (let i = 0; i < dates.length; i++) {
+      const date = dates[i];
+      const dateStr = dateStrs[i];
 
       let status = "H";
       let note = "";
       let lateM = 0;
 
-      if (isWeekend(year, month, day)) {
+      if (isWeekendFromDate(date)) {
         status = "L";
       } else {
         const leave = await prisma.riwayatIzinCuti.findFirst({
@@ -249,7 +261,7 @@ async function handleAttendance(searchParams: URLSearchParams) {
           if (scans === 0) {
             status = "A";
           } else {
-            const sched = await getScheduleForEmployee(emp.pin, date, dow);
+      const sched = await getScheduleForEmployee(emp.pin, date, date.getDay());
             const jamKerja = sched?.jamKerjaKode ? await prisma.jamKerja.findUnique({ where: { kode: sched.jamKerjaKode } }) : null;
             if (jamKerja?.startTime) {
               const firstScan = await prisma.attendanceLog.findFirst({
@@ -276,18 +288,18 @@ async function handleAttendance(searchParams: URLSearchParams) {
         }
       }
       totals[status] = (totals[status] || 0) + 1;
-      days.push({ date: dateStr, day, status, lateMinutes: lateM, note });
+      days.push({ date: dateStr, day: date.getDate(), status, lateMinutes: lateM, note });
     }
 
     report.push({
       pin: emp.pin,
       name: emp.name,
       days,
-      totals: { ...totals, total: totalDays },
+      totals: { ...totals, total: dates.length },
     });
   }
 
-  return NextResponse.json({ success: true, report, totalDays });
+  return NextResponse.json({ success: true, report, totalDays: dates.length });
 }
 
 async function handleGenerate(searchParams: URLSearchParams) {

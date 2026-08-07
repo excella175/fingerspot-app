@@ -33,6 +33,16 @@ export type AttendanceLog = Prisma.AttendanceLogModel
  */
 export type UserInfo = Prisma.UserInfoModel
 /**
+ * Model Kantor
+ * 
+ */
+export type Kantor = Prisma.KantorModel
+/**
+ * Model Jabatan
+ * 
+ */
+export type Jabatan = Prisma.JabatanModel
+/**
  * Model Aturan
  * 
  */

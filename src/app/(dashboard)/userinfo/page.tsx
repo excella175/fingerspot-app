@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import QRCode from "qrcode";
 import {
   Search, RefreshCw, Users, ChevronLeft, ChevronRight,
   Pencil, Trash2, Upload, Download, Plus,
-  CheckSquare, Square, Loader2, Database, Monitor,
+  CheckSquare, Square, Loader2, Database, Monitor, QrCode,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -71,8 +72,15 @@ export default function UserinfoPage() {
 
   // Import
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [importing, setImporting] = useState(false);
-  const [importStatus, setImportStatus] = useState("");
+
+  // QR
+  const [qrLoading, setQrLoading] = useState<string | null>(null);
+  const [qrImages, setQrImages] = useState<Record<string, string>>({});
+
+  // Kantor & Jabatan
+  const [kantors, setKantors] = useState<{ id: string; nama: string; jabatans: { id: string; nama: string }[] }[]>([]);
+  const [editKantorId, setEditKantorId] = useState("");
+  const [editJabatanId, setEditJabatanId] = useState("");
 
   // Delete single
   const [deletingPins, setDeletingPins] = useState<Set<string>>(new Set());
@@ -97,19 +105,44 @@ export default function UserinfoPage() {
 
   useEffect(() => { fetchData(); }, [page]);
 
+  // Devices for multi-device sync
+  const [devices, setDevices] = useState<{ id: string; cloudId: string; name: string }[]>([]);
+  const [syncDeviceId, setSyncDeviceId] = useState(""); // "" = default env (legacy)
+  const [pushDialog, setPushDialog] = useState<{ cloudId: string | null } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/device")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success && d.data.length > 0) {
+          setDevices(d.data);
+          setSyncDeviceId(d.data[0].cloudId);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/kantor")
+      .then((r) => r.json())
+      .then((d) => setKantors(d.data || []))
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
 
   // ---- Sync from device ----
   const handleSync = async () => {
+    if (!syncDeviceId) { alert("Tidak ada mesin terdaftar. Tambah mesin di halaman Perangkat dulu."); return; }
     setSyncing(true);
     setSyncStatus("Mengirim perintah ke mesin...");
     try {
       const res = await fetch("/api/fingerspot", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ command: "get_all_pin", params: {} }),
+        body: JSON.stringify({ command: "get_all_pin", params: { cloudId: syncDeviceId } }),
       });
       const r = await res.json();
       if (r.success) {
@@ -173,6 +206,8 @@ export default function UserinfoPage() {
           pin: editPin,
           name: editName.trim(),
           facePhoto: editFacePhoto || null,
+          kantorId: editKantorId || null,
+          jabatanId: editJabatanId || null,
         }),
       });
       const result = await res.json();
@@ -255,9 +290,10 @@ export default function UserinfoPage() {
   };
 
   // ---- Bulk sync to device ----
-  const handleBulkSync = async () => {
+  const handleBulkSync = async (cloudId: string) => {
     const pins = Array.from(selected);
     if (pins.length === 0) return;
+    setPushDialog(null);
     setBulkSyncing(true);
     let success = 0;
     let failed = 0;
@@ -266,7 +302,7 @@ export default function UserinfoPage() {
         const res = await fetch("/api/userinfo/sync", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pin }),
+          body: JSON.stringify({ pin, cloudId }),
         });
         const result = await res.json();
         if (result.success) success++; else failed++;
@@ -275,6 +311,32 @@ export default function UserinfoPage() {
     setBulkSyncing(false);
     setSyncStatus(`✅ ${success} user dikirim ke mesin${failed ? `, ${failed} gagal` : ""}`);
     setTimeout(() => setSyncStatus(""), 5000);
+  };
+
+  // ---- Set QR for a single user ----
+  const handleSetQr = async (pin: string, cloudId?: string) => {
+    setQrLoading(pin);
+    try {
+      const qrString = pin;
+      const res = await fetch("/api/fingerspot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          command: "set_qrcode",
+          params: { pin, qrString, cloudId },
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        const url = await QRCode.toDataURL(qrString, { width: 150, margin: 2 });
+        setQrImages((prev) => ({ ...prev, [pin]: url }));
+      } else {
+        alert("Gagal: " + (data.error || "Unknown error"));
+      }
+    } catch {
+      alert("Gagal mengirim perintah");
+    }
+    setQrLoading(null);
   };
 
   // ---- Add user ----
@@ -316,26 +378,55 @@ export default function UserinfoPage() {
     a.click();
   };
 
-  // ---- Import Excel ----
+  // ---- Import Excel (preview dulu) ----
+  const [preview, setPreview] = useState<{
+    total: number; valid: number; errors: number; warnings: number;
+    rows: { rowIndex: number; pin: string; name: string; kantorName: string; jabatanName: string; valid: boolean; errors: string[]; warnings: string[]; kantorFound: boolean; jabatanFound: boolean }[];
+  } | null>(null);
+  const [previewFile, setPreviewFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importStatus, setImportStatus] = useState("");
+
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setImporting(true);
-    setImportStatus("Mengimport...");
+    setImportStatus("Mengecek file...");
     try {
       const fd = new FormData();
       fd.append("file", file);
+      const res = await fetch("/api/userinfo/excel/preview", { method: "POST", body: fd });
+      const result = await res.json();
+      if (result.success) {
+        setPreview(result);
+        setPreviewFile(file);
+      } else {
+        setImportStatus("❌ " + (result.error || "Gagal membaca file"));
+      }
+    } catch {
+      setImportStatus("❌ Gagal membaca file");
+    }
+    setImporting(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleConfirmImport = async () => {
+    if (!previewFile) return;
+    setImporting(true);
+    setImportStatus("Mengimport...");
+    try {
+      const fd = new FormData();
+      fd.append("file", previewFile);
       const res = await fetch("/api/userinfo/excel", { method: "POST", body: fd });
       const result = await res.json();
       setImportStatus(result.success
         ? `✅ ${result.message}`
         : "❌ " + (result.error || "Gagal import"));
-      if (result.success) { setPage(1); fetchData(); }
+      if (result.success) { setPreview(null); setPage(1); fetchData(); }
     } catch {
       setImportStatus("❌ Gagal import file");
     }
     setImporting(false);
-    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const totalPages = Math.ceil(total / limit);
@@ -395,7 +486,20 @@ export default function UserinfoPage() {
             <Button variant="secondary" onClick={() => { setPage(1); fetchData(); }}>
               <Search className="h-4 w-4 mr-1.5" /> Cari
             </Button>
-            <Button onClick={handleSync} disabled={syncing}>
+            <div>
+              <label className="block text-[13px] font-medium text-gray-500 mb-1.5">Mesin</label>
+              <select
+                value={syncDeviceId}
+                onChange={(e) => setSyncDeviceId(e.target.value)}
+                className="h-10 rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 min-w-[180px]"
+              >
+                {devices.length === 0 && <option value="">Belum ada mesin</option>}
+                {devices.map((d) => (
+                  <option key={d.cloudId} value={d.cloudId}>{d.name} ({d.cloudId})</option>
+                ))}
+              </select>
+            </div>
+            <Button onClick={handleSync} disabled={syncing || devices.length === 0}>
               <RefreshCw className={`h-4 w-4 mr-1.5 ${syncing ? "animate-spin" : ""}`} />
               {syncing ? "Menunggu data..." : "Ambil Data User dari Mesin"}
             </Button>
@@ -420,7 +524,7 @@ export default function UserinfoPage() {
           <div className="flex items-center gap-2">
             <Button
               variant="secondary" size="sm"
-              onClick={handleBulkSync}
+              onClick={() => setPushDialog({ cloudId: null })}
               disabled={bulkSyncing}
             >
               {bulkSyncing
@@ -455,18 +559,21 @@ export default function UserinfoPage() {
               </TableHead>
               <TableHead>PIN</TableHead>
               <TableHead>Nama</TableHead>
+              <TableHead>Kantor</TableHead>
+              <TableHead>Jabatan</TableHead>
               <TableHead>Privilege</TableHead>
               <TableHead className="text-center">Fingerprint</TableHead>
               <TableHead className="text-center">Face</TableHead>
               <TableHead className="text-center">RFID</TableHead>
               <TableHead>Device ID</TableHead>
+              <TableHead className="w-16 text-center">QR</TableHead>
               <TableHead className="text-center">Aksi</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={10} className="h-48 text-center text-muted-foreground">
+                <TableCell colSpan={12} className="h-48 text-center text-muted-foreground">
                   <div className="flex items-center justify-center gap-2">
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" /> Memuat...
                   </div>
@@ -474,7 +581,7 @@ export default function UserinfoPage() {
               </TableRow>
             ) : data.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} className="h-48 text-center text-muted-foreground">
+                <TableCell colSpan={12} className="h-48 text-center text-muted-foreground">
                   Tidak ada data. Klik &quot;Ambil Data User dari Mesin&quot; untuk mengambil data.
                 </TableCell>
               </TableRow>
@@ -490,6 +597,24 @@ export default function UserinfoPage() {
                 </TableCell>
                 <TableCell className="font-mono">{row.pin}</TableCell>
                 <TableCell className="font-medium">{row.name}</TableCell>
+                <TableCell className="text-[12.5px]">
+                  {(row as any).kantor?.nama ? (
+                    <span className="inline-flex items-center gap-1 rounded-md bg-indigo-50 px-2 py-0.5 text-[11.5px] font-medium text-indigo-700">
+                      {(row as any).kantor.nama}
+                    </span>
+                  ) : (
+                    <span className="text-gray-300">-</span>
+                  )}
+                </TableCell>
+                <TableCell className="text-[12.5px]">
+                  {(row as any).jabatan?.nama ? (
+                    <span className="rounded-md bg-blue-50 px-2 py-0.5 text-[11.5px] font-medium text-blue-700">
+                      {(row as any).jabatan.nama}
+                    </span>
+                  ) : (
+                    <span className="text-gray-300">-</span>
+                  )}
+                </TableCell>
                 <TableCell>
                   <Badge variant={row.privilege === 2 ? "default" : "secondary"}>
                     {getPrivilegeLabel(row.privilege)}
@@ -500,6 +625,30 @@ export default function UserinfoPage() {
                 <TableCell className="text-center">{row.rfid}</TableCell>
                 <TableCell className="font-mono text-[11px] text-muted-foreground">{row.deviceCloudId || "-"}</TableCell>
                 <TableCell className="text-center">
+                  {qrImages[row.pin] ? (
+                    <img
+                      src={qrImages[row.pin]}
+                      alt="QR"
+                      className="mx-auto h-9 w-9 rounded border border-gray-200 cursor-pointer"
+                      onClick={() => window.open(qrImages[row.pin], "_blank")}
+                      title="Klik untuk perbesar"
+                    />
+                  ) : (
+                    <button
+                      onClick={() => handleSetQr(row.pin, syncDeviceId || undefined)}
+                      disabled={qrLoading === row.pin}
+                      className="inline-flex items-center gap-1 rounded-lg bg-amber-50 px-2 py-1 text-[11px] text-amber-700 hover:bg-amber-100 transition-colors disabled:opacity-50"
+                    >
+                      {qrLoading === row.pin ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <QrCode className="h-3 w-3" />
+                      )}
+                      QR
+                    </button>
+                  )}
+                </TableCell>
+                <TableCell className="text-center">
                   <div className="flex items-center justify-center gap-1">
                     <Button
                       variant="ghost" size="icon"
@@ -508,6 +657,8 @@ export default function UserinfoPage() {
                         setEditName(row.name);
                         setEditFacePhoto(row.facePhoto || null);
                         setEditFacePreview(row.facePhoto ? `data:image/jpeg;base64,${row.facePhoto}` : null);
+                        setEditKantorId((row as any).kantor?.id || "");
+                        setEditJabatanId((row as any).jabatan?.id || "");
                         setEditStatus("");
                       }}
                       title="Edit nama"
@@ -565,6 +716,42 @@ export default function UserinfoPage() {
                 onKeyDown={(e) => e.key === "Enter" && handleEdit()}
                 autoFocus
               />
+            </div>
+
+            {/* Kantor & Jabatan */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[13px] font-medium text-muted-foreground mb-1">Kantor</label>
+                <select
+                  value={editKantorId}
+                  onChange={(e) => {
+                    setEditKantorId(e.target.value);
+                    setEditJabatanId("");
+                  }}
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-[13px] focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="">Tanpa Kantor</option>
+                  {kantors.map((k) => (
+                    <option key={k.id} value={k.id}>{k.nama}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[13px] font-medium text-muted-foreground mb-1">Jabatan</label>
+                <select
+                  value={editJabatanId}
+                  onChange={(e) => setEditJabatanId(e.target.value)}
+                  disabled={!editKantorId}
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-[13px] focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+                >
+                  <option value="">Tanpa Jabatan</option>
+                  {kantors
+                    .find((k) => k.id === editKantorId)
+                    ?.jabatans.map((j) => (
+                      <option key={j.id} value={j.id}>{j.nama}</option>
+                    ))}
+                </select>
+              </div>
             </div>
 
             {/* Face Photo */}
@@ -666,6 +853,122 @@ export default function UserinfoPage() {
                 {adding ? "Mengirim..." : "Tambah & Kirim ke Mesin"}
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Preview Import Dialog */}
+      <Dialog open={!!preview} onOpenChange={(open) => { if (!open) setPreview(null); }}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Preview Import Excel</DialogTitle>
+            <DialogDescription>
+              Periksa hasil pembacaan file. Baris dengan error tidak akan disimpan. Kantor/jabatan yang tidak ditemukan akan diabaikan (user tetap disimpan dengan PIN &amp; Nama).
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-wrap gap-2 text-[12.5px]">
+            <span className="rounded-lg bg-gray-100 px-2.5 py-1 font-medium text-gray-700">
+              Total: {preview?.total} baris
+            </span>
+            <span className="rounded-lg bg-green-100 px-2.5 py-1 font-medium text-green-700">
+              ✅ Siap disimpan: {preview?.valid}
+            </span>
+            <span className="rounded-lg bg-red-100 px-2.5 py-1 font-medium text-red-700">
+              ❌ Error: {preview?.errors}
+            </span>
+            <span className="rounded-lg bg-amber-100 px-2.5 py-1 font-medium text-amber-700">
+              ⚠️ Peringatan: {preview?.warnings}
+            </span>
+          </div>
+
+          <div className="max-h-80 overflow-auto rounded-xl border border-gray-100">
+            <table className="w-full text-left text-[12.5px]">
+              <thead className="sticky top-0 bg-gray-50 text-[11px] uppercase tracking-wide text-gray-500">
+                <tr>
+                  <th className="px-3 py-2 font-semibold">Baris</th>
+                  <th className="px-3 py-2 font-semibold">PIN</th>
+                  <th className="px-3 py-2 font-semibold">Nama</th>
+                  <th className="px-3 py-2 font-semibold">Kantor</th>
+                  <th className="px-3 py-2 font-semibold">Jabatan</th>
+                  <th className="px-3 py-2 font-semibold">Keterangan</th>
+                </tr>
+              </thead>
+              <tbody>
+                {preview?.rows.map((r) => (
+                  <tr key={r.rowIndex} className="border-t border-gray-50">
+                    <td className="px-3 py-2 font-mono text-[11px] text-gray-400">{r.rowIndex}</td>
+                    <td className="px-3 py-2 font-mono">{r.pin}</td>
+                    <td className="px-3 py-2">{r.name}</td>
+                    <td className="px-3 py-2">
+                      {r.kantorName === "-" ? <span className="text-gray-300">-</span> : r.kantorName}
+                      {!r.kantorFound && r.kantorName !== "-" && (
+                        <span className="ml-1 text-[10px] text-red-500">(tidak ada)</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2">
+                      {r.jabatanName === "-" ? <span className="text-gray-300">-</span> : r.jabatanName}
+                      {!r.jabatanFound && r.jabatanName !== "-" && (
+                        <span className="ml-1 text-[10px] text-red-500">(tidak ada)</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2">
+                      {r.errors.length > 0 ? (
+                        <span className="text-[11px] font-medium text-red-600">
+                          {r.errors.join("; ")}
+                        </span>
+                      ) : r.warnings.length > 0 ? (
+                        <span className="text-[11px] text-amber-600">{r.warnings.join("; ")}</span>
+                      ) : (
+                        <span className="text-[11px] text-green-600">OK</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex gap-2">
+            <Button variant="outline" className="flex-1" onClick={() => setPreview(null)} disabled={importing}>
+              Batal
+            </Button>
+            <Button className="flex-1" onClick={handleConfirmImport} disabled={importing || (preview?.valid ?? 0) === 0}>
+              {importing ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
+              {importing ? "Mengimport..." : `Simpan ${preview?.valid ?? 0} Baris`}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Push to device dialog */}
+      <Dialog open={!!pushDialog} onOpenChange={(open) => { if (!open) setPushDialog(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Turunkan ke Mesin</DialogTitle>
+            <DialogDescription>
+              Pilih mesin tujuan untuk {selected.size} user terpilih. Data dikirim via set_userinfo dan hasilnya akan masuk via webhook.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            {devices.map((d) => (
+              <button
+                key={d.cloudId}
+                onClick={() => handleBulkSync(d.cloudId)}
+                disabled={bulkSyncing}
+                className="flex w-full items-center gap-3 rounded-xl border border-gray-100 bg-gray-50/50 p-3 text-left hover:border-indigo-200 hover:bg-indigo-50/50 transition-colors disabled:opacity-50"
+              >
+                <Monitor className="h-4 w-4 text-indigo-500" />
+                <div className="min-w-0 flex-1">
+                  <div className="text-[13.5px] font-semibold text-gray-900">{d.name}</div>
+                  <div className="font-mono text-[11.5px] text-gray-400">Cloud ID: {d.cloudId}</div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-gray-300" />
+              </button>
+            ))}
+            {devices.length === 0 && (
+              <p className="text-[13px] text-gray-400">Belum ada mesin terdaftar. Tambahkan di halaman Perangkat.</p>
+            )}
           </div>
         </DialogContent>
       </Dialog>

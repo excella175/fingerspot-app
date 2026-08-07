@@ -7,11 +7,13 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "50");
     const pin = searchParams.get("pin") || "";
+    const deviceCloudId = searchParams.get("deviceCloudId") || "";
     const startDate = searchParams.get("startDate") || "";
     const endDate = searchParams.get("endDate") || "";
 
     const where: any = {};
     if (pin) where.employeePin = pin;
+    if (deviceCloudId) where.deviceCloudId = deviceCloudId;
     if (startDate && endDate) {
       // Fingerspot payload scan_date biasanya tanpa timezone (contoh: "2026-06-29 16:41:10").
       // Di webhook kita normalisasi menjadi +07:00, jadi filter di sini harus konsisten (+07:00).

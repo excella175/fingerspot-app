@@ -49,7 +49,7 @@ async function upsertAttendanceFromGetAttlogRows(cloudId: string, rows: any[]) {
 }
 
 async function fetchAndSaveAttlog(cloudId: string, startDate: string, endDate: string) {
-  const result = await fingerspot.getAttlog(startDate, endDate);
+  const result = await fingerspot.getAttlog(startDate, endDate, cloudId);
   if (result?.success !== true) return result;
   let rows: any[] = [];
   if (Array.isArray(result.data)) rows = result.data;
@@ -80,45 +80,45 @@ export async function POST(request: NextRequest) {
         break;
 
       case "get_userinfo": {
-        result = await fingerspot.getUserInfo(params.pin, params.transId);
+        result = await fingerspot.getUserInfo(params.pin, params.name ?? "", params.transId, String(targetCloudId));
         break;
       }
 
       case "get_all_pin": {
-        result = await fingerspot.getAllPin(params.transId);
+        result = await fingerspot.getAllPin(params.transId, String(targetCloudId));
         break;
       }
 
       case "reg_online":
-        result = await fingerspot.registerOnline(params.pin, params.verification);
+        result = await fingerspot.registerOnline(params.pin, params.verification, String(targetCloudId));
         break;
 
       case "get_device":
-        result = await fingerspot.getDevice(params.transId);
+        result = await fingerspot.getDevice(params.transId, String(targetCloudId));
         break;
 
       case "set_time":
-        result = await fingerspot.setTime(params.timezone);
+        result = await fingerspot.setTime(params.timezone, String(targetCloudId));
         break;
 
       case "restart_device":
-        result = await fingerspot.restartDevice(params.transId);
+        result = await fingerspot.restartDevice(params.transId, String(targetCloudId));
         break;
 
       case "set_qrcode":
-        result = await fingerspot.setQrCode(params.pin, params.qrString);
+        result = await fingerspot.setQrCode(params.pin, params.qrString, String(targetCloudId));
         break;
 
       case "get_qrcode":
-        result = await fingerspot.getQrCode(params.pin);
+        result = await fingerspot.getQrCode(params.pin, String(targetCloudId));
         break;
 
       case "set_userinfo":
-        result = await fingerspot.setUserInfo(params);
+        result = await fingerspot.setUserInfo(params, String(targetCloudId));
         break;
 
       case "delete_userinfo":
-        result = await fingerspot.deleteUserInfo(params.pin);
+        result = await fingerspot.deleteUserInfo(params.pin, String(targetCloudId));
         break;
 
       default:
@@ -126,6 +126,25 @@ export async function POST(request: NextRequest) {
     }
 
     const duration = Date.now() - startTime;
+
+    // Auto-register / update device status
+    try {
+      await prisma.device.upsert({
+        where: { cloudId: String(targetCloudId) },
+        update: {
+          status: result?.success ? "ONLINE" : "OFFLINE",
+          lastSync: result?.success ? new Date() : undefined,
+          name: params?.name || undefined,
+        },
+        create: {
+          cloudId: String(targetCloudId),
+          name: params?.name || `Mesin ${targetCloudId}`,
+          status: result?.success ? "ONLINE" : "OFFLINE",
+          lastSync: result?.success ? new Date() : null,
+        },
+      });
+    } catch { /* device upsert best-effort */ }
+
     await prisma.apiLog.create({
       data: {
         command,

@@ -43,6 +43,22 @@ export async function POST(request: NextRequest) {
     console.error("[webhook] db log error:", e);
   }
 
+  // 3b. Auto-register device + update status ONLINE
+  if (cloudId && cloudId !== "unknown") {
+    try {
+      await prisma.device.upsert({
+        where: { cloudId: String(cloudId) },
+        update: { status: "ONLINE", lastSync: new Date() },
+        create: {
+          cloudId: String(cloudId),
+          name: `Mesin ${cloudId}`,
+          status: "ONLINE",
+          lastSync: new Date(),
+        },
+      });
+    } catch { /* best-effort */ }
+  }
+
   // 4. Process by type
   switch (String(type)) {
     case "get_userid_list": {

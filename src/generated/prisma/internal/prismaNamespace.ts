@@ -387,6 +387,8 @@ export const ModelName = {
   Device: 'Device',
   AttendanceLog: 'AttendanceLog',
   UserInfo: 'UserInfo',
+  Kantor: 'Kantor',
+  Jabatan: 'Jabatan',
   Aturan: 'Aturan',
   JamKerja: 'JamKerja',
   JadwalAuto: 'JadwalAuto',
@@ -414,7 +416,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "device" | "attendanceLog" | "userInfo" | "aturan" | "jamKerja" | "jadwalAuto" | "jadwalAutoDay" | "jadwalAutoEmployee" | "jadwalManual" | "masterIzinCuti" | "riwayatIzinCuti" | "attendanceReport" | "pinList" | "apiLog" | "webhookLog"
+    modelProps: "device" | "attendanceLog" | "userInfo" | "kantor" | "jabatan" | "aturan" | "jamKerja" | "jadwalAuto" | "jadwalAutoDay" | "jadwalAutoEmployee" | "jadwalManual" | "masterIzinCuti" | "riwayatIzinCuti" | "attendanceReport" | "pinList" | "apiLog" | "webhookLog"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -637,6 +639,154 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.UserInfoCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.UserInfoCountAggregateOutputType> | number
+        }
+      }
+    }
+    Kantor: {
+      payload: Prisma.$KantorPayload<ExtArgs>
+      fields: Prisma.KantorFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.KantorFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$KantorPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.KantorFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$KantorPayload>
+        }
+        findFirst: {
+          args: Prisma.KantorFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$KantorPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.KantorFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$KantorPayload>
+        }
+        findMany: {
+          args: Prisma.KantorFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$KantorPayload>[]
+        }
+        create: {
+          args: Prisma.KantorCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$KantorPayload>
+        }
+        createMany: {
+          args: Prisma.KantorCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.KantorCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$KantorPayload>[]
+        }
+        delete: {
+          args: Prisma.KantorDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$KantorPayload>
+        }
+        update: {
+          args: Prisma.KantorUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$KantorPayload>
+        }
+        deleteMany: {
+          args: Prisma.KantorDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.KantorUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.KantorUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$KantorPayload>[]
+        }
+        upsert: {
+          args: Prisma.KantorUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$KantorPayload>
+        }
+        aggregate: {
+          args: Prisma.KantorAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateKantor>
+        }
+        groupBy: {
+          args: Prisma.KantorGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.KantorGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.KantorCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.KantorCountAggregateOutputType> | number
+        }
+      }
+    }
+    Jabatan: {
+      payload: Prisma.$JabatanPayload<ExtArgs>
+      fields: Prisma.JabatanFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.JabatanFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$JabatanPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.JabatanFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$JabatanPayload>
+        }
+        findFirst: {
+          args: Prisma.JabatanFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$JabatanPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.JabatanFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$JabatanPayload>
+        }
+        findMany: {
+          args: Prisma.JabatanFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$JabatanPayload>[]
+        }
+        create: {
+          args: Prisma.JabatanCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$JabatanPayload>
+        }
+        createMany: {
+          args: Prisma.JabatanCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.JabatanCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$JabatanPayload>[]
+        }
+        delete: {
+          args: Prisma.JabatanDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$JabatanPayload>
+        }
+        update: {
+          args: Prisma.JabatanUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$JabatanPayload>
+        }
+        deleteMany: {
+          args: Prisma.JabatanDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.JabatanUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.JabatanUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$JabatanPayload>[]
+        }
+        upsert: {
+          args: Prisma.JabatanUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$JabatanPayload>
+        }
+        aggregate: {
+          args: Prisma.JabatanAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateJabatan>
+        }
+        groupBy: {
+          args: Prisma.JabatanGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.JabatanGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.JabatanCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.JabatanCountAggregateOutputType> | number
         }
       }
     }
@@ -1609,6 +1759,8 @@ export const UserInfoScalarFieldEnum = {
   vein: 'vein',
   template: 'template',
   facePhoto: 'facePhoto',
+  kantorId: 'kantorId',
+  jabatanId: 'jabatanId',
   deviceCloudId: 'deviceCloudId',
   rawPayload: 'rawPayload',
   createdAt: 'createdAt',
@@ -1616,6 +1768,28 @@ export const UserInfoScalarFieldEnum = {
 } as const
 
 export type UserInfoScalarFieldEnum = (typeof UserInfoScalarFieldEnum)[keyof typeof UserInfoScalarFieldEnum]
+
+
+export const KantorScalarFieldEnum = {
+  id: 'id',
+  nama: 'nama',
+  alamat: 'alamat',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type KantorScalarFieldEnum = (typeof KantorScalarFieldEnum)[keyof typeof KantorScalarFieldEnum]
+
+
+export const JabatanScalarFieldEnum = {
+  id: 'id',
+  nama: 'nama',
+  kantorId: 'kantorId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type JabatanScalarFieldEnum = (typeof JabatanScalarFieldEnum)[keyof typeof JabatanScalarFieldEnum]
 
 
 export const AturanScalarFieldEnum = {
@@ -2034,6 +2208,8 @@ export type GlobalOmitConfig = {
   device?: Prisma.DeviceOmit
   attendanceLog?: Prisma.AttendanceLogOmit
   userInfo?: Prisma.UserInfoOmit
+  kantor?: Prisma.KantorOmit
+  jabatan?: Prisma.JabatanOmit
   aturan?: Prisma.AturanOmit
   jamKerja?: Prisma.JamKerjaOmit
   jadwalAuto?: Prisma.JadwalAutoOmit

@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net">
+  <diagram name="ERD-Fingerspot" id="erd-1">
+    <mxGraphModel dx="800" dy="600" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="10" value="&lt;b style=&quot;color:#fff&quot;&gt;Devices&lt;/b&gt;" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontalStack=0;startSize=30;fillColor=#1e40af;swimlaneFillColor=#1e40af;rounded=1;shadow=0;labelBackgroundColor=none;strokeColor=#1e3a8a;fontSize=12;fontColor=#FFFFFF;align=center;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="380" y="40" width="190" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="11" value="🔑 id : String (PK)" style="text;strokeColor=#e2e8f0;fillColor=#f8fafc;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="10">
+          <mxGeometry x="0" y="0" width="190" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="12" value="cloudId : String (UK)" style="text;strokeColor=#e2e8f0;fillColor=#ffffff;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="10">
+          <mxGeometry x="0" y="22" width="190" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="13" value="name : String" style="text;strokeColor=#e2e8f0;fillColor=#f8fafc;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="10">
+          <mxGeometry x="0" y="44" width="190" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="14" value="status : String" style="text;strokeColor=#e2e8f0;fillColor=#ffffff;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="10">
+          <mxGeometry x="0" y="66" width="190" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="15" value="timezone : String" style="text;strokeColor=#e2e8f0;fillColor=#f8fafc;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="10">
+          <mxGeometry x="0" y="88" width="190" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="16" value="lastSync : DateTime?" style="text;strokeColor=#e2e8f0;fillColor=#ffffff;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="10">
+          <mxGeometry x="0" y="110" width="190" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="17" value="&lt;b style=&quot;color:#fff&quot;&gt;ApiLogs&lt;/b&gt;" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontalStack=0;startSize=30;fillColor=#2563eb;swimlaneFillColor=#2563eb;rounded=1;shadow=0;labelBackgroundColor=none;strokeColor=#1e3a8a;fontSize=12;fontColor=#FFFFFF;align=center;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="60" y="200" width="220" height="236" as="geometry" />
+        </mxCell>
+        <mxCell id="18" value="🔑 id : String (PK)" style="text;strokeColor=#e2e8f0;fillColor=#f8fafc;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="17">
+          <mxGeometry x="0" y="0" width="220" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="19" value="command : String" style="text;strokeColor=#e2e8f0;fillColor=#ffffff;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="17">
+          <mxGeometry x="0" y="22" width="220" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="20" value="deviceCloudId : String (FK)" style="text;strokeColor=#e2e8f0;fillColor=#f8fafc;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="17">
+          <mxGeometry x="0" y="44" width="220" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="21" value="transId : String?" style="text;strokeColor=#e2e8f0;fillColor=#ffffff;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="17">
+          <mxGeometry x="0" y="66" width="220" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="22" value="status : String" style="text;strokeColor=#e2e8f0;fillColor=#f8fafc;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="17">
+          <mxGeometry x="0" y="88" width="220" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="23" value="requestPayload : Json?" style="text;strokeColor=#e2e8f0;fillColor=#ffffff;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="17">
+          <mxGeometry x="0" y="110" width="220" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="24" value="responsePayload : Json?" style="text;strokeColor=#e2e8f0;fillColor=#f8fafc;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="17">
+          <mxGeometry x="0" y="132" width="220" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="25" value="errorMessage : String?" style="text;strokeColor=#e2e8f0;fillColor=#ffffff;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="17">
+          <mxGeometry x="0" y="154" width="220" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="26" value="duration : Int?" style="text;strokeColor=#e2e8f0;fillColor=#f8fafc;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="17">
+          <mxGeometry x="0" y="176" width="220" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="27" value="&lt;b style=&quot;color:#fff&quot;&gt;WebhookLogs&lt;/b&gt;" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontalStack=0;startSize=30;fillColor=#2563eb;swimlaneFillColor=#2563eb;rounded=1;shadow=0;labelBackgroundColor=none;strokeColor=#1e3a8a;fontSize=12;fontColor=#FFFFFF;align=center;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="370" y="200" width="220" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="28" value="🔑 id : String (PK)" style="text;strokeColor=#e2e8f0;fillColor=#f8fafc;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="27">
+          <mxGeometry x="0" y="0" width="220" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="29" value="type : String" style="text;strokeColor=#e2e8f0;fillColor=#ffffff;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="27">
+          <mxGeometry x="0" y="22" width="220" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="30" value="deviceCloudId : String (FK)" style="text;strokeColor=#e2e8f0;fillColor=#f8fafc;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="27">
+          <mxGeometry x="0" y="44" width="220" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="31" value="transId : String?" style="text;strokeColor=#e2e8f0;fillColor=#ffffff;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="27">
+          <mxGeometry x="0" y="66" width="220" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="32" value="status : String" style="text;strokeColor=#e2e8f0;fillColor=#f8fafc;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="27">
+          <mxGeometry x="0" y="88" width="220" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="33" value="payload : Json?" style="text;strokeColor=#e2e8f0;fillColor=#ffffff;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="27">
+          <mxGeometry x="0" y="110" width="220" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="34" value="&lt;b style=&quot;color:#fff&quot;&gt;PinLists&lt;/b&gt;" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontalStack=0;startSize=30;fillColor=#2563eb;swimlaneFillColor=#2563eb;rounded=1;shadow=0;labelBackgroundColor=none;strokeColor=#1e3a8a;fontSize=12;fontColor=#FFFFFF;align=center;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="680" y="200" width="200" height="148" as="geometry" />
+        </mxCell>
+        <mxCell id="35" value="🔑 id : String (PK)" style="text;strokeColor=#e2e8f0;fillColor=#f8fafc;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="34">
+          <mxGeometry x="0" y="0" width="200" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="36" value="deviceCloudId : String (FK)" style="text;strokeColor=#e2e8f0;fillColor=#ffffff;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="34">
+          <mxGeometry x="0" y="22" width="200" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="37" value="pin : String" style="text;strokeColor=#e2e8f0;fillColor=#f8fafc;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="34">
+          <mxGeometry x="0" y="44" width="200" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="38" value="total : Int?" style="text;strokeColor=#e2e8f0;fillColor=#ffffff;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="34">
+          <mxGeometry x="0" y="66" width="200" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="39" value="rawPayload : Json?" style="text;strokeColor=#e2e8f0;fillColor=#f8fafc;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="34">
+          <mxGeometry x="0" y="88" width="200" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="40" value="&lt;b style=&quot;color:#fff&quot;&gt;UserInfos&lt;/b&gt;" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontalStack=0;startSize=30;fillColor=#2563eb;swimlaneFillColor=#2563eb;rounded=1;shadow=0;labelBackgroundColor=none;strokeColor=#1e3a8a;fontSize=12;fontColor=#FFFFFF;align=center;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="650" y="420" width="240" height="236" as="geometry" />
+        </mxCell>
+        <mxCell id="41" value="🔑 id : String (PK)" style="text;strokeColor=#e2e8f0;fillColor=#f8fafc;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="40">
+          <mxGeometry x="0" y="0" width="240" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="42" value="pin : String (UK)" style="text;strokeColor=#e2e8f0;fillColor=#ffffff;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="40">
+          <mxGeometry x="0" y="22" width="240" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="43" value="name : String" style="text;strokeColor=#e2e8f0;fillColor=#f8fafc;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="40">
+          <mxGeometry x="0" y="44" width="240" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="44" value="privilege : Int" style="text;strokeColor=#e2e8f0;fillColor=#ffffff;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="40">
+          <mxGeometry x="0" y="66" width="240" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="45" value="finger / face / rfid / vein : Int" style="text;strokeColor=#e2e8f0;fillColor=#f8fafc;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="40">
+          <mxGeometry x="0" y="88" width="240" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="46" value="template : String?" style="text;strokeColor=#e2e8f0;fillColor=#ffffff;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="40">
+          <mxGeometry x="0" y="110" width="240" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="47" value="facePhoto : String?" style="text;strokeColor=#e2e8f0;fillColor=#f8fafc;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="40">
+          <mxGeometry x="0" y="132" width="240" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="48" value="deviceCloudId : String? (FK)" style="text;strokeColor=#e2e8f0;fillColor=#ffffff;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="40">
+          <mxGeometry x="0" y="154" width="240" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="49" value="rawPayload : Json?" style="text;strokeColor=#e2e8f0;fillColor=#f8fafc;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="40">
+          <mxGeometry x="0" y="176" width="240" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="50" value="&lt;b style=&quot;color:#fff&quot;&gt;AttendanceLogs&lt;/b&gt;" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontalStack=0;startSize=30;fillColor=#2563eb;swimlaneFillColor=#2563eb;rounded=1;shadow=0;labelBackgroundColor=none;strokeColor=#1e3a8a;fontSize=12;fontColor=#FFFFFF;align=center;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="620" y="640" width="270" height="236" as="geometry" />
+        </mxCell>
+        <mxCell id="51" value="🔑 id : String (PK)" style="text;strokeColor=#e2e8f0;fillColor=#f8fafc;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="50">
+          <mxGeometry x="0" y="0" width="270" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="52" value="employeePin : String (FK)" style="text;strokeColor=#e2e8f0;fillColor=#ffffff;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="50">
+          <mxGeometry x="0" y="22" width="270" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="53" value="deviceCloudId : String (FK)" style="text;strokeColor=#e2e8f0;fillColor=#f8fafc;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="50">
+          <mxGeometry x="0" y="44" width="270" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="54" value="scanTime : DateTime" style="text;strokeColor=#e2e8f0;fillColor=#ffffff;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="50">
+          <mxGeometry x="0" y="66" width="270" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="55" value="verifyMethod : Int?" style="text;strokeColor=#e2e8f0;fillColor=#f8fafc;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="50">
+          <mxGeometry x="0" y="88" width="270" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="56" value="statusScan : Int?" style="text;strokeColor=#e2e8f0;fillColor=#ffffff;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="50">
+          <mxGeometry x="0" y="110" width="270" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="57" value="status : String" style="text;strokeColor=#e2e8f0;fillColor=#f8fafc;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="50">
+          <mxGeometry x="0" y="132" width="270" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="58" value="source : String" style="text;strokeColor=#e2e8f0;fillColor=#ffffff;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="50">
+          <mxGeometry x="0" y="154" width="270" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="59" value="rawPayload : Json?" style="text;strokeColor=#e2e8f0;fillColor=#f8fafc;fontSize=11;fontColor=#334155;align=left;spacingLeft=8;overflow=hidden;rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="50">
+          <mxGeometry x="0" y="176" width="270" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="60" value="deviceCloudId" style="edgeStyle=rounded;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;fontSize=10;fontColor=#64748b;strokeColor=#94a3b8;strokeWidth=1;endArrow=ERmany;endFill=0;startArrow=ERone;startFill=0;exitX=0;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="10" target="17">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="61" value="deviceCloudId" style="edgeStyle=rounded;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;fontSize=10;fontColor=#64748b;strokeColor=#94a3b8;strokeWidth=1;endArrow=ERmany;endFill=0;startArrow=ERone;startFill=0;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="10" target="27">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="62" value="deviceCloudId" style="edgeStyle=rounded;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;fontSize=10;fontColor=#64748b;strokeColor=#94a3b8;strokeWidth=1;endArrow=ERmany;endFill=0;startArrow=ERone;startFill=0;exitX=1;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="10" target="34">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="63" value="pin → pin" style="edgeStyle=rounded;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;fontSize=10;fontColor=#64748b;strokeColor=#94a3b8;strokeWidth=1;endArrow=ERmany;endFill=0;startArrow=ERone;startFill=0;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="34" target="40">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="64" value="employeePin" style="edgeStyle=rounded;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;fontSize=10;fontColor=#64748b;strokeColor=#94a3b8;strokeWidth=1;endArrow=ERmany;endFill=0;startArrow=ERone;startFill=0;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="40" target="50">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

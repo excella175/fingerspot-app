@@ -54,6 +54,8 @@ export type UserInfoMinAggregateOutputType = {
   vein: number | null
   template: string | null
   facePhoto: string | null
+  kantorId: string | null
+  jabatanId: string | null
   deviceCloudId: string | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -71,6 +73,8 @@ export type UserInfoMaxAggregateOutputType = {
   vein: number | null
   template: string | null
   facePhoto: string | null
+  kantorId: string | null
+  jabatanId: string | null
   deviceCloudId: string | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -88,6 +92,8 @@ export type UserInfoCountAggregateOutputType = {
   vein: number
   template: number
   facePhoto: number
+  kantorId: number
+  jabatanId: number
   deviceCloudId: number
   rawPayload: number
   createdAt: number
@@ -124,6 +130,8 @@ export type UserInfoMinAggregateInputType = {
   vein?: true
   template?: true
   facePhoto?: true
+  kantorId?: true
+  jabatanId?: true
   deviceCloudId?: true
   createdAt?: true
   updatedAt?: true
@@ -141,6 +149,8 @@ export type UserInfoMaxAggregateInputType = {
   vein?: true
   template?: true
   facePhoto?: true
+  kantorId?: true
+  jabatanId?: true
   deviceCloudId?: true
   createdAt?: true
   updatedAt?: true
@@ -158,6 +168,8 @@ export type UserInfoCountAggregateInputType = {
   vein?: true
   template?: true
   facePhoto?: true
+  kantorId?: true
+  jabatanId?: true
   deviceCloudId?: true
   rawPayload?: true
   createdAt?: true
@@ -263,6 +275,8 @@ export type UserInfoGroupByOutputType = {
   vein: number
   template: string | null
   facePhoto: string | null
+  kantorId: string | null
+  jabatanId: string | null
   deviceCloudId: string | null
   rawPayload: runtime.JsonValue | null
   createdAt: Date
@@ -304,10 +318,14 @@ export type UserInfoWhereInput = {
   vein?: Prisma.IntFilter<"UserInfo"> | number
   template?: Prisma.StringNullableFilter<"UserInfo"> | string | null
   facePhoto?: Prisma.StringNullableFilter<"UserInfo"> | string | null
+  kantorId?: Prisma.StringNullableFilter<"UserInfo"> | string | null
+  jabatanId?: Prisma.StringNullableFilter<"UserInfo"> | string | null
   deviceCloudId?: Prisma.StringNullableFilter<"UserInfo"> | string | null
   rawPayload?: Prisma.JsonNullableFilter<"UserInfo">
   createdAt?: Prisma.DateTimeFilter<"UserInfo"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"UserInfo"> | Date | string
+  kantor?: Prisma.XOR<Prisma.KantorNullableScalarRelationFilter, Prisma.KantorWhereInput> | null
+  jabatan?: Prisma.XOR<Prisma.JabatanNullableScalarRelationFilter, Prisma.JabatanWhereInput> | null
 }
 
 export type UserInfoOrderByWithRelationInput = {
@@ -322,10 +340,14 @@ export type UserInfoOrderByWithRelationInput = {
   vein?: Prisma.SortOrder
   template?: Prisma.SortOrderInput | Prisma.SortOrder
   facePhoto?: Prisma.SortOrderInput | Prisma.SortOrder
+  kantorId?: Prisma.SortOrderInput | Prisma.SortOrder
+  jabatanId?: Prisma.SortOrderInput | Prisma.SortOrder
   deviceCloudId?: Prisma.SortOrderInput | Prisma.SortOrder
   rawPayload?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  kantor?: Prisma.KantorOrderByWithRelationInput
+  jabatan?: Prisma.JabatanOrderByWithRelationInput
 }
 
 export type UserInfoWhereUniqueInput = Prisma.AtLeast<{
@@ -343,10 +365,14 @@ export type UserInfoWhereUniqueInput = Prisma.AtLeast<{
   vein?: Prisma.IntFilter<"UserInfo"> | number
   template?: Prisma.StringNullableFilter<"UserInfo"> | string | null
   facePhoto?: Prisma.StringNullableFilter<"UserInfo"> | string | null
+  kantorId?: Prisma.StringNullableFilter<"UserInfo"> | string | null
+  jabatanId?: Prisma.StringNullableFilter<"UserInfo"> | string | null
   deviceCloudId?: Prisma.StringNullableFilter<"UserInfo"> | string | null
   rawPayload?: Prisma.JsonNullableFilter<"UserInfo">
   createdAt?: Prisma.DateTimeFilter<"UserInfo"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"UserInfo"> | Date | string
+  kantor?: Prisma.XOR<Prisma.KantorNullableScalarRelationFilter, Prisma.KantorWhereInput> | null
+  jabatan?: Prisma.XOR<Prisma.JabatanNullableScalarRelationFilter, Prisma.JabatanWhereInput> | null
 }, "id" | "pin">
 
 export type UserInfoOrderByWithAggregationInput = {
@@ -361,6 +387,8 @@ export type UserInfoOrderByWithAggregationInput = {
   vein?: Prisma.SortOrder
   template?: Prisma.SortOrderInput | Prisma.SortOrder
   facePhoto?: Prisma.SortOrderInput | Prisma.SortOrder
+  kantorId?: Prisma.SortOrderInput | Prisma.SortOrder
+  jabatanId?: Prisma.SortOrderInput | Prisma.SortOrder
   deviceCloudId?: Prisma.SortOrderInput | Prisma.SortOrder
   rawPayload?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -387,6 +415,8 @@ export type UserInfoScalarWhereWithAggregatesInput = {
   vein?: Prisma.IntWithAggregatesFilter<"UserInfo"> | number
   template?: Prisma.StringNullableWithAggregatesFilter<"UserInfo"> | string | null
   facePhoto?: Prisma.StringNullableWithAggregatesFilter<"UserInfo"> | string | null
+  kantorId?: Prisma.StringNullableWithAggregatesFilter<"UserInfo"> | string | null
+  jabatanId?: Prisma.StringNullableWithAggregatesFilter<"UserInfo"> | string | null
   deviceCloudId?: Prisma.StringNullableWithAggregatesFilter<"UserInfo"> | string | null
   rawPayload?: Prisma.JsonNullableWithAggregatesFilter<"UserInfo">
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"UserInfo"> | Date | string
@@ -409,6 +439,8 @@ export type UserInfoCreateInput = {
   rawPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
+  kantor?: Prisma.KantorCreateNestedOneWithoutUsersInput
+  jabatan?: Prisma.JabatanCreateNestedOneWithoutUsersInput
 }
 
 export type UserInfoUncheckedCreateInput = {
@@ -423,6 +455,8 @@ export type UserInfoUncheckedCreateInput = {
   vein?: number
   template?: string | null
   facePhoto?: string | null
+  kantorId?: string | null
+  jabatanId?: string | null
   deviceCloudId?: string | null
   rawPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
@@ -445,6 +479,8 @@ export type UserInfoUpdateInput = {
   rawPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kantor?: Prisma.KantorUpdateOneWithoutUsersNestedInput
+  jabatan?: Prisma.JabatanUpdateOneWithoutUsersNestedInput
 }
 
 export type UserInfoUncheckedUpdateInput = {
@@ -459,6 +495,8 @@ export type UserInfoUncheckedUpdateInput = {
   vein?: Prisma.IntFieldUpdateOperationsInput | number
   template?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   facePhoto?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kantorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  jabatanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deviceCloudId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   rawPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -477,6 +515,8 @@ export type UserInfoCreateManyInput = {
   vein?: number
   template?: string | null
   facePhoto?: string | null
+  kantorId?: string | null
+  jabatanId?: string | null
   deviceCloudId?: string | null
   rawPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
@@ -513,6 +553,8 @@ export type UserInfoUncheckedUpdateManyInput = {
   vein?: Prisma.IntFieldUpdateOperationsInput | number
   template?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   facePhoto?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kantorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  jabatanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deviceCloudId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   rawPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -531,6 +573,8 @@ export type UserInfoCountOrderByAggregateInput = {
   vein?: Prisma.SortOrder
   template?: Prisma.SortOrder
   facePhoto?: Prisma.SortOrder
+  kantorId?: Prisma.SortOrder
+  jabatanId?: Prisma.SortOrder
   deviceCloudId?: Prisma.SortOrder
   rawPayload?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -557,6 +601,8 @@ export type UserInfoMaxOrderByAggregateInput = {
   vein?: Prisma.SortOrder
   template?: Prisma.SortOrder
   facePhoto?: Prisma.SortOrder
+  kantorId?: Prisma.SortOrder
+  jabatanId?: Prisma.SortOrder
   deviceCloudId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -574,6 +620,8 @@ export type UserInfoMinOrderByAggregateInput = {
   vein?: Prisma.SortOrder
   template?: Prisma.SortOrder
   facePhoto?: Prisma.SortOrder
+  kantorId?: Prisma.SortOrder
+  jabatanId?: Prisma.SortOrder
   deviceCloudId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -587,6 +635,16 @@ export type UserInfoSumOrderByAggregateInput = {
   vein?: Prisma.SortOrder
 }
 
+export type UserInfoListRelationFilter = {
+  every?: Prisma.UserInfoWhereInput
+  some?: Prisma.UserInfoWhereInput
+  none?: Prisma.UserInfoWhereInput
+}
+
+export type UserInfoOrderByRelationAggregateInput = {
+  _count?: Prisma.SortOrder
+}
+
 export type NullableStringFieldUpdateOperationsInput = {
   set?: string | null
 }
@@ -597,6 +655,393 @@ export type IntFieldUpdateOperationsInput = {
   decrement?: number
   multiply?: number
   divide?: number
+}
+
+export type UserInfoCreateNestedManyWithoutKantorInput = {
+  create?: Prisma.XOR<Prisma.UserInfoCreateWithoutKantorInput, Prisma.UserInfoUncheckedCreateWithoutKantorInput> | Prisma.UserInfoCreateWithoutKantorInput[] | Prisma.UserInfoUncheckedCreateWithoutKantorInput[]
+  connectOrCreate?: Prisma.UserInfoCreateOrConnectWithoutKantorInput | Prisma.UserInfoCreateOrConnectWithoutKantorInput[]
+  createMany?: Prisma.UserInfoCreateManyKantorInputEnvelope
+  connect?: Prisma.UserInfoWhereUniqueInput | Prisma.UserInfoWhereUniqueInput[]
+}
+
+export type UserInfoUncheckedCreateNestedManyWithoutKantorInput = {
+  create?: Prisma.XOR<Prisma.UserInfoCreateWithoutKantorInput, Prisma.UserInfoUncheckedCreateWithoutKantorInput> | Prisma.UserInfoCreateWithoutKantorInput[] | Prisma.UserInfoUncheckedCreateWithoutKantorInput[]
+  connectOrCreate?: Prisma.UserInfoCreateOrConnectWithoutKantorInput | Prisma.UserInfoCreateOrConnectWithoutKantorInput[]
+  createMany?: Prisma.UserInfoCreateManyKantorInputEnvelope
+  connect?: Prisma.UserInfoWhereUniqueInput | Prisma.UserInfoWhereUniqueInput[]
+}
+
+export type UserInfoUpdateManyWithoutKantorNestedInput = {
+  create?: Prisma.XOR<Prisma.UserInfoCreateWithoutKantorInput, Prisma.UserInfoUncheckedCreateWithoutKantorInput> | Prisma.UserInfoCreateWithoutKantorInput[] | Prisma.UserInfoUncheckedCreateWithoutKantorInput[]
+  connectOrCreate?: Prisma.UserInfoCreateOrConnectWithoutKantorInput | Prisma.UserInfoCreateOrConnectWithoutKantorInput[]
+  upsert?: Prisma.UserInfoUpsertWithWhereUniqueWithoutKantorInput | Prisma.UserInfoUpsertWithWhereUniqueWithoutKantorInput[]
+  createMany?: Prisma.UserInfoCreateManyKantorInputEnvelope
+  set?: Prisma.UserInfoWhereUniqueInput | Prisma.UserInfoWhereUniqueInput[]
+  disconnect?: Prisma.UserInfoWhereUniqueInput | Prisma.UserInfoWhereUniqueInput[]
+  delete?: Prisma.UserInfoWhereUniqueInput | Prisma.UserInfoWhereUniqueInput[]
+  connect?: Prisma.UserInfoWhereUniqueInput | Prisma.UserInfoWhereUniqueInput[]
+  update?: Prisma.UserInfoUpdateWithWhereUniqueWithoutKantorInput | Prisma.UserInfoUpdateWithWhereUniqueWithoutKantorInput[]
+  updateMany?: Prisma.UserInfoUpdateManyWithWhereWithoutKantorInput | Prisma.UserInfoUpdateManyWithWhereWithoutKantorInput[]
+  deleteMany?: Prisma.UserInfoScalarWhereInput | Prisma.UserInfoScalarWhereInput[]
+}
+
+export type UserInfoUncheckedUpdateManyWithoutKantorNestedInput = {
+  create?: Prisma.XOR<Prisma.UserInfoCreateWithoutKantorInput, Prisma.UserInfoUncheckedCreateWithoutKantorInput> | Prisma.UserInfoCreateWithoutKantorInput[] | Prisma.UserInfoUncheckedCreateWithoutKantorInput[]
+  connectOrCreate?: Prisma.UserInfoCreateOrConnectWithoutKantorInput | Prisma.UserInfoCreateOrConnectWithoutKantorInput[]
+  upsert?: Prisma.UserInfoUpsertWithWhereUniqueWithoutKantorInput | Prisma.UserInfoUpsertWithWhereUniqueWithoutKantorInput[]
+  createMany?: Prisma.UserInfoCreateManyKantorInputEnvelope
+  set?: Prisma.UserInfoWhereUniqueInput | Prisma.UserInfoWhereUniqueInput[]
+  disconnect?: Prisma.UserInfoWhereUniqueInput | Prisma.UserInfoWhereUniqueInput[]
+  delete?: Prisma.UserInfoWhereUniqueInput | Prisma.UserInfoWhereUniqueInput[]
+  connect?: Prisma.UserInfoWhereUniqueInput | Prisma.UserInfoWhereUniqueInput[]
+  update?: Prisma.UserInfoUpdateWithWhereUniqueWithoutKantorInput | Prisma.UserInfoUpdateWithWhereUniqueWithoutKantorInput[]
+  updateMany?: Prisma.UserInfoUpdateManyWithWhereWithoutKantorInput | Prisma.UserInfoUpdateManyWithWhereWithoutKantorInput[]
+  deleteMany?: Prisma.UserInfoScalarWhereInput | Prisma.UserInfoScalarWhereInput[]
+}
+
+export type UserInfoCreateNestedManyWithoutJabatanInput = {
+  create?: Prisma.XOR<Prisma.UserInfoCreateWithoutJabatanInput, Prisma.UserInfoUncheckedCreateWithoutJabatanInput> | Prisma.UserInfoCreateWithoutJabatanInput[] | Prisma.UserInfoUncheckedCreateWithoutJabatanInput[]
+  connectOrCreate?: Prisma.UserInfoCreateOrConnectWithoutJabatanInput | Prisma.UserInfoCreateOrConnectWithoutJabatanInput[]
+  createMany?: Prisma.UserInfoCreateManyJabatanInputEnvelope
+  connect?: Prisma.UserInfoWhereUniqueInput | Prisma.UserInfoWhereUniqueInput[]
+}
+
+export type UserInfoUncheckedCreateNestedManyWithoutJabatanInput = {
+  create?: Prisma.XOR<Prisma.UserInfoCreateWithoutJabatanInput, Prisma.UserInfoUncheckedCreateWithoutJabatanInput> | Prisma.UserInfoCreateWithoutJabatanInput[] | Prisma.UserInfoUncheckedCreateWithoutJabatanInput[]
+  connectOrCreate?: Prisma.UserInfoCreateOrConnectWithoutJabatanInput | Prisma.UserInfoCreateOrConnectWithoutJabatanInput[]
+  createMany?: Prisma.UserInfoCreateManyJabatanInputEnvelope
+  connect?: Prisma.UserInfoWhereUniqueInput | Prisma.UserInfoWhereUniqueInput[]
+}
+
+export type UserInfoUpdateManyWithoutJabatanNestedInput = {
+  create?: Prisma.XOR<Prisma.UserInfoCreateWithoutJabatanInput, Prisma.UserInfoUncheckedCreateWithoutJabatanInput> | Prisma.UserInfoCreateWithoutJabatanInput[] | Prisma.UserInfoUncheckedCreateWithoutJabatanInput[]
+  connectOrCreate?: Prisma.UserInfoCreateOrConnectWithoutJabatanInput | Prisma.UserInfoCreateOrConnectWithoutJabatanInput[]
+  upsert?: Prisma.UserInfoUpsertWithWhereUniqueWithoutJabatanInput | Prisma.UserInfoUpsertWithWhereUniqueWithoutJabatanInput[]
+  createMany?: Prisma.UserInfoCreateManyJabatanInputEnvelope
+  set?: Prisma.UserInfoWhereUniqueInput | Prisma.UserInfoWhereUniqueInput[]
+  disconnect?: Prisma.UserInfoWhereUniqueInput | Prisma.UserInfoWhereUniqueInput[]
+  delete?: Prisma.UserInfoWhereUniqueInput | Prisma.UserInfoWhereUniqueInput[]
+  connect?: Prisma.UserInfoWhereUniqueInput | Prisma.UserInfoWhereUniqueInput[]
+  update?: Prisma.UserInfoUpdateWithWhereUniqueWithoutJabatanInput | Prisma.UserInfoUpdateWithWhereUniqueWithoutJabatanInput[]
+  updateMany?: Prisma.UserInfoUpdateManyWithWhereWithoutJabatanInput | Prisma.UserInfoUpdateManyWithWhereWithoutJabatanInput[]
+  deleteMany?: Prisma.UserInfoScalarWhereInput | Prisma.UserInfoScalarWhereInput[]
+}
+
+export type UserInfoUncheckedUpdateManyWithoutJabatanNestedInput = {
+  create?: Prisma.XOR<Prisma.UserInfoCreateWithoutJabatanInput, Prisma.UserInfoUncheckedCreateWithoutJabatanInput> | Prisma.UserInfoCreateWithoutJabatanInput[] | Prisma.UserInfoUncheckedCreateWithoutJabatanInput[]
+  connectOrCreate?: Prisma.UserInfoCreateOrConnectWithoutJabatanInput | Prisma.UserInfoCreateOrConnectWithoutJabatanInput[]
+  upsert?: Prisma.UserInfoUpsertWithWhereUniqueWithoutJabatanInput | Prisma.UserInfoUpsertWithWhereUniqueWithoutJabatanInput[]
+  createMany?: Prisma.UserInfoCreateManyJabatanInputEnvelope
+  set?: Prisma.UserInfoWhereUniqueInput | Prisma.UserInfoWhereUniqueInput[]
+  disconnect?: Prisma.UserInfoWhereUniqueInput | Prisma.UserInfoWhereUniqueInput[]
+  delete?: Prisma.UserInfoWhereUniqueInput | Prisma.UserInfoWhereUniqueInput[]
+  connect?: Prisma.UserInfoWhereUniqueInput | Prisma.UserInfoWhereUniqueInput[]
+  update?: Prisma.UserInfoUpdateWithWhereUniqueWithoutJabatanInput | Prisma.UserInfoUpdateWithWhereUniqueWithoutJabatanInput[]
+  updateMany?: Prisma.UserInfoUpdateManyWithWhereWithoutJabatanInput | Prisma.UserInfoUpdateManyWithWhereWithoutJabatanInput[]
+  deleteMany?: Prisma.UserInfoScalarWhereInput | Prisma.UserInfoScalarWhereInput[]
+}
+
+export type UserInfoCreateWithoutKantorInput = {
+  id?: string
+  pin: string
+  name: string
+  password?: string | null
+  privilege?: number
+  finger?: number
+  face?: number
+  rfid?: number
+  vein?: number
+  template?: string | null
+  facePhoto?: string | null
+  deviceCloudId?: string | null
+  rawPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  jabatan?: Prisma.JabatanCreateNestedOneWithoutUsersInput
+}
+
+export type UserInfoUncheckedCreateWithoutKantorInput = {
+  id?: string
+  pin: string
+  name: string
+  password?: string | null
+  privilege?: number
+  finger?: number
+  face?: number
+  rfid?: number
+  vein?: number
+  template?: string | null
+  facePhoto?: string | null
+  jabatanId?: string | null
+  deviceCloudId?: string | null
+  rawPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type UserInfoCreateOrConnectWithoutKantorInput = {
+  where: Prisma.UserInfoWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserInfoCreateWithoutKantorInput, Prisma.UserInfoUncheckedCreateWithoutKantorInput>
+}
+
+export type UserInfoCreateManyKantorInputEnvelope = {
+  data: Prisma.UserInfoCreateManyKantorInput | Prisma.UserInfoCreateManyKantorInput[]
+  skipDuplicates?: boolean
+}
+
+export type UserInfoUpsertWithWhereUniqueWithoutKantorInput = {
+  where: Prisma.UserInfoWhereUniqueInput
+  update: Prisma.XOR<Prisma.UserInfoUpdateWithoutKantorInput, Prisma.UserInfoUncheckedUpdateWithoutKantorInput>
+  create: Prisma.XOR<Prisma.UserInfoCreateWithoutKantorInput, Prisma.UserInfoUncheckedCreateWithoutKantorInput>
+}
+
+export type UserInfoUpdateWithWhereUniqueWithoutKantorInput = {
+  where: Prisma.UserInfoWhereUniqueInput
+  data: Prisma.XOR<Prisma.UserInfoUpdateWithoutKantorInput, Prisma.UserInfoUncheckedUpdateWithoutKantorInput>
+}
+
+export type UserInfoUpdateManyWithWhereWithoutKantorInput = {
+  where: Prisma.UserInfoScalarWhereInput
+  data: Prisma.XOR<Prisma.UserInfoUpdateManyMutationInput, Prisma.UserInfoUncheckedUpdateManyWithoutKantorInput>
+}
+
+export type UserInfoScalarWhereInput = {
+  AND?: Prisma.UserInfoScalarWhereInput | Prisma.UserInfoScalarWhereInput[]
+  OR?: Prisma.UserInfoScalarWhereInput[]
+  NOT?: Prisma.UserInfoScalarWhereInput | Prisma.UserInfoScalarWhereInput[]
+  id?: Prisma.StringFilter<"UserInfo"> | string
+  pin?: Prisma.StringFilter<"UserInfo"> | string
+  name?: Prisma.StringFilter<"UserInfo"> | string
+  password?: Prisma.StringNullableFilter<"UserInfo"> | string | null
+  privilege?: Prisma.IntFilter<"UserInfo"> | number
+  finger?: Prisma.IntFilter<"UserInfo"> | number
+  face?: Prisma.IntFilter<"UserInfo"> | number
+  rfid?: Prisma.IntFilter<"UserInfo"> | number
+  vein?: Prisma.IntFilter<"UserInfo"> | number
+  template?: Prisma.StringNullableFilter<"UserInfo"> | string | null
+  facePhoto?: Prisma.StringNullableFilter<"UserInfo"> | string | null
+  kantorId?: Prisma.StringNullableFilter<"UserInfo"> | string | null
+  jabatanId?: Prisma.StringNullableFilter<"UserInfo"> | string | null
+  deviceCloudId?: Prisma.StringNullableFilter<"UserInfo"> | string | null
+  rawPayload?: Prisma.JsonNullableFilter<"UserInfo">
+  createdAt?: Prisma.DateTimeFilter<"UserInfo"> | Date | string
+  updatedAt?: Prisma.DateTimeFilter<"UserInfo"> | Date | string
+}
+
+export type UserInfoCreateWithoutJabatanInput = {
+  id?: string
+  pin: string
+  name: string
+  password?: string | null
+  privilege?: number
+  finger?: number
+  face?: number
+  rfid?: number
+  vein?: number
+  template?: string | null
+  facePhoto?: string | null
+  deviceCloudId?: string | null
+  rawPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  kantor?: Prisma.KantorCreateNestedOneWithoutUsersInput
+}
+
+export type UserInfoUncheckedCreateWithoutJabatanInput = {
+  id?: string
+  pin: string
+  name: string
+  password?: string | null
+  privilege?: number
+  finger?: number
+  face?: number
+  rfid?: number
+  vein?: number
+  template?: string | null
+  facePhoto?: string | null
+  kantorId?: string | null
+  deviceCloudId?: string | null
+  rawPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type UserInfoCreateOrConnectWithoutJabatanInput = {
+  where: Prisma.UserInfoWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserInfoCreateWithoutJabatanInput, Prisma.UserInfoUncheckedCreateWithoutJabatanInput>
+}
+
+export type UserInfoCreateManyJabatanInputEnvelope = {
+  data: Prisma.UserInfoCreateManyJabatanInput | Prisma.UserInfoCreateManyJabatanInput[]
+  skipDuplicates?: boolean
+}
+
+export type UserInfoUpsertWithWhereUniqueWithoutJabatanInput = {
+  where: Prisma.UserInfoWhereUniqueInput
+  update: Prisma.XOR<Prisma.UserInfoUpdateWithoutJabatanInput, Prisma.UserInfoUncheckedUpdateWithoutJabatanInput>
+  create: Prisma.XOR<Prisma.UserInfoCreateWithoutJabatanInput, Prisma.UserInfoUncheckedCreateWithoutJabatanInput>
+}
+
+export type UserInfoUpdateWithWhereUniqueWithoutJabatanInput = {
+  where: Prisma.UserInfoWhereUniqueInput
+  data: Prisma.XOR<Prisma.UserInfoUpdateWithoutJabatanInput, Prisma.UserInfoUncheckedUpdateWithoutJabatanInput>
+}
+
+export type UserInfoUpdateManyWithWhereWithoutJabatanInput = {
+  where: Prisma.UserInfoScalarWhereInput
+  data: Prisma.XOR<Prisma.UserInfoUpdateManyMutationInput, Prisma.UserInfoUncheckedUpdateManyWithoutJabatanInput>
+}
+
+export type UserInfoCreateManyKantorInput = {
+  id?: string
+  pin: string
+  name: string
+  password?: string | null
+  privilege?: number
+  finger?: number
+  face?: number
+  rfid?: number
+  vein?: number
+  template?: string | null
+  facePhoto?: string | null
+  jabatanId?: string | null
+  deviceCloudId?: string | null
+  rawPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type UserInfoUpdateWithoutKantorInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  pin?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  password?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  privilege?: Prisma.IntFieldUpdateOperationsInput | number
+  finger?: Prisma.IntFieldUpdateOperationsInput | number
+  face?: Prisma.IntFieldUpdateOperationsInput | number
+  rfid?: Prisma.IntFieldUpdateOperationsInput | number
+  vein?: Prisma.IntFieldUpdateOperationsInput | number
+  template?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  facePhoto?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deviceCloudId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rawPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  jabatan?: Prisma.JabatanUpdateOneWithoutUsersNestedInput
+}
+
+export type UserInfoUncheckedUpdateWithoutKantorInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  pin?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  password?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  privilege?: Prisma.IntFieldUpdateOperationsInput | number
+  finger?: Prisma.IntFieldUpdateOperationsInput | number
+  face?: Prisma.IntFieldUpdateOperationsInput | number
+  rfid?: Prisma.IntFieldUpdateOperationsInput | number
+  vein?: Prisma.IntFieldUpdateOperationsInput | number
+  template?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  facePhoto?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  jabatanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deviceCloudId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rawPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type UserInfoUncheckedUpdateManyWithoutKantorInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  pin?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  password?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  privilege?: Prisma.IntFieldUpdateOperationsInput | number
+  finger?: Prisma.IntFieldUpdateOperationsInput | number
+  face?: Prisma.IntFieldUpdateOperationsInput | number
+  rfid?: Prisma.IntFieldUpdateOperationsInput | number
+  vein?: Prisma.IntFieldUpdateOperationsInput | number
+  template?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  facePhoto?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  jabatanId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deviceCloudId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rawPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type UserInfoCreateManyJabatanInput = {
+  id?: string
+  pin: string
+  name: string
+  password?: string | null
+  privilege?: number
+  finger?: number
+  face?: number
+  rfid?: number
+  vein?: number
+  template?: string | null
+  facePhoto?: string | null
+  kantorId?: string | null
+  deviceCloudId?: string | null
+  rawPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type UserInfoUpdateWithoutJabatanInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  pin?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  password?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  privilege?: Prisma.IntFieldUpdateOperationsInput | number
+  finger?: Prisma.IntFieldUpdateOperationsInput | number
+  face?: Prisma.IntFieldUpdateOperationsInput | number
+  rfid?: Prisma.IntFieldUpdateOperationsInput | number
+  vein?: Prisma.IntFieldUpdateOperationsInput | number
+  template?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  facePhoto?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deviceCloudId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rawPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  kantor?: Prisma.KantorUpdateOneWithoutUsersNestedInput
+}
+
+export type UserInfoUncheckedUpdateWithoutJabatanInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  pin?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  password?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  privilege?: Prisma.IntFieldUpdateOperationsInput | number
+  finger?: Prisma.IntFieldUpdateOperationsInput | number
+  face?: Prisma.IntFieldUpdateOperationsInput | number
+  rfid?: Prisma.IntFieldUpdateOperationsInput | number
+  vein?: Prisma.IntFieldUpdateOperationsInput | number
+  template?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  facePhoto?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kantorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deviceCloudId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rawPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type UserInfoUncheckedUpdateManyWithoutJabatanInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  pin?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  password?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  privilege?: Prisma.IntFieldUpdateOperationsInput | number
+  finger?: Prisma.IntFieldUpdateOperationsInput | number
+  face?: Prisma.IntFieldUpdateOperationsInput | number
+  rfid?: Prisma.IntFieldUpdateOperationsInput | number
+  vein?: Prisma.IntFieldUpdateOperationsInput | number
+  template?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  facePhoto?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kantorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deviceCloudId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rawPayload?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 
@@ -613,10 +1058,14 @@ export type UserInfoSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   vein?: boolean
   template?: boolean
   facePhoto?: boolean
+  kantorId?: boolean
+  jabatanId?: boolean
   deviceCloudId?: boolean
   rawPayload?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  kantor?: boolean | Prisma.UserInfo$kantorArgs<ExtArgs>
+  jabatan?: boolean | Prisma.UserInfo$jabatanArgs<ExtArgs>
 }, ExtArgs["result"]["userInfo"]>
 
 export type UserInfoSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -631,10 +1080,14 @@ export type UserInfoSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exte
   vein?: boolean
   template?: boolean
   facePhoto?: boolean
+  kantorId?: boolean
+  jabatanId?: boolean
   deviceCloudId?: boolean
   rawPayload?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  kantor?: boolean | Prisma.UserInfo$kantorArgs<ExtArgs>
+  jabatan?: boolean | Prisma.UserInfo$jabatanArgs<ExtArgs>
 }, ExtArgs["result"]["userInfo"]>
 
 export type UserInfoSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -649,10 +1102,14 @@ export type UserInfoSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exte
   vein?: boolean
   template?: boolean
   facePhoto?: boolean
+  kantorId?: boolean
+  jabatanId?: boolean
   deviceCloudId?: boolean
   rawPayload?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  kantor?: boolean | Prisma.UserInfo$kantorArgs<ExtArgs>
+  jabatan?: boolean | Prisma.UserInfo$jabatanArgs<ExtArgs>
 }, ExtArgs["result"]["userInfo"]>
 
 export type UserInfoSelectScalar = {
@@ -667,17 +1124,34 @@ export type UserInfoSelectScalar = {
   vein?: boolean
   template?: boolean
   facePhoto?: boolean
+  kantorId?: boolean
+  jabatanId?: boolean
   deviceCloudId?: boolean
   rawPayload?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type UserInfoOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "pin" | "name" | "password" | "privilege" | "finger" | "face" | "rfid" | "vein" | "template" | "facePhoto" | "deviceCloudId" | "rawPayload" | "createdAt" | "updatedAt", ExtArgs["result"]["userInfo"]>
+export type UserInfoOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "pin" | "name" | "password" | "privilege" | "finger" | "face" | "rfid" | "vein" | "template" | "facePhoto" | "kantorId" | "jabatanId" | "deviceCloudId" | "rawPayload" | "createdAt" | "updatedAt", ExtArgs["result"]["userInfo"]>
+export type UserInfoInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  kantor?: boolean | Prisma.UserInfo$kantorArgs<ExtArgs>
+  jabatan?: boolean | Prisma.UserInfo$jabatanArgs<ExtArgs>
+}
+export type UserInfoIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  kantor?: boolean | Prisma.UserInfo$kantorArgs<ExtArgs>
+  jabatan?: boolean | Prisma.UserInfo$jabatanArgs<ExtArgs>
+}
+export type UserInfoIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  kantor?: boolean | Prisma.UserInfo$kantorArgs<ExtArgs>
+  jabatan?: boolean | Prisma.UserInfo$jabatanArgs<ExtArgs>
+}
 
 export type $UserInfoPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "UserInfo"
-  objects: {}
+  objects: {
+    kantor: Prisma.$KantorPayload<ExtArgs> | null
+    jabatan: Prisma.$JabatanPayload<ExtArgs> | null
+  }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     pin: string
@@ -690,6 +1164,8 @@ export type $UserInfoPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     vein: number
     template: string | null
     facePhoto: string | null
+    kantorId: string | null
+    jabatanId: string | null
     deviceCloudId: string | null
     rawPayload: runtime.JsonValue | null
     createdAt: Date
@@ -1088,6 +1564,8 @@ readonly fields: UserInfoFieldRefs;
  */
 export interface Prisma__UserInfoClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
+  kantor<T extends Prisma.UserInfo$kantorArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.UserInfo$kantorArgs<ExtArgs>>): Prisma.Prisma__KantorClient<runtime.Types.Result.GetResult<Prisma.$KantorPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  jabatan<T extends Prisma.UserInfo$jabatanArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.UserInfo$jabatanArgs<ExtArgs>>): Prisma.Prisma__JabatanClient<runtime.Types.Result.GetResult<Prisma.$JabatanPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1128,6 +1606,8 @@ export interface UserInfoFieldRefs {
   readonly vein: Prisma.FieldRef<"UserInfo", 'Int'>
   readonly template: Prisma.FieldRef<"UserInfo", 'String'>
   readonly facePhoto: Prisma.FieldRef<"UserInfo", 'String'>
+  readonly kantorId: Prisma.FieldRef<"UserInfo", 'String'>
+  readonly jabatanId: Prisma.FieldRef<"UserInfo", 'String'>
   readonly deviceCloudId: Prisma.FieldRef<"UserInfo", 'String'>
   readonly rawPayload: Prisma.FieldRef<"UserInfo", 'Json'>
   readonly createdAt: Prisma.FieldRef<"UserInfo", 'DateTime'>
@@ -1149,6 +1629,10 @@ export type UserInfoFindUniqueArgs<ExtArgs extends runtime.Types.Extensions.Inte
    */
   omit?: Prisma.UserInfoOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserInfoInclude<ExtArgs> | null
+  /**
    * Filter, which UserInfo to fetch.
    */
   where: Prisma.UserInfoWhereUniqueInput
@@ -1167,6 +1651,10 @@ export type UserInfoFindUniqueOrThrowArgs<ExtArgs extends runtime.Types.Extensio
    */
   omit?: Prisma.UserInfoOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserInfoInclude<ExtArgs> | null
+  /**
    * Filter, which UserInfo to fetch.
    */
   where: Prisma.UserInfoWhereUniqueInput
@@ -1184,6 +1672,10 @@ export type UserInfoFindFirstArgs<ExtArgs extends runtime.Types.Extensions.Inter
    * Omit specific fields from the UserInfo
    */
   omit?: Prisma.UserInfoOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserInfoInclude<ExtArgs> | null
   /**
    * Filter, which UserInfo to fetch.
    */
@@ -1233,6 +1725,10 @@ export type UserInfoFindFirstOrThrowArgs<ExtArgs extends runtime.Types.Extension
    */
   omit?: Prisma.UserInfoOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserInfoInclude<ExtArgs> | null
+  /**
    * Filter, which UserInfo to fetch.
    */
   where?: Prisma.UserInfoWhereInput
@@ -1280,6 +1776,10 @@ export type UserInfoFindManyArgs<ExtArgs extends runtime.Types.Extensions.Intern
    * Omit specific fields from the UserInfo
    */
   omit?: Prisma.UserInfoOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserInfoInclude<ExtArgs> | null
   /**
    * Filter, which UserInfos to fetch.
    */
@@ -1329,6 +1829,10 @@ export type UserInfoCreateArgs<ExtArgs extends runtime.Types.Extensions.Internal
    */
   omit?: Prisma.UserInfoOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserInfoInclude<ExtArgs> | null
+  /**
    * The data needed to create a UserInfo.
    */
   data: Prisma.XOR<Prisma.UserInfoCreateInput, Prisma.UserInfoUncheckedCreateInput>
@@ -1362,6 +1866,10 @@ export type UserInfoCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Extens
    */
   data: Prisma.UserInfoCreateManyInput | Prisma.UserInfoCreateManyInput[]
   skipDuplicates?: boolean
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserInfoIncludeCreateManyAndReturn<ExtArgs> | null
 }
 
 /**
@@ -1376,6 +1884,10 @@ export type UserInfoUpdateArgs<ExtArgs extends runtime.Types.Extensions.Internal
    * Omit specific fields from the UserInfo
    */
   omit?: Prisma.UserInfoOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserInfoInclude<ExtArgs> | null
   /**
    * The data needed to update a UserInfo.
    */
@@ -1428,6 +1940,10 @@ export type UserInfoUpdateManyAndReturnArgs<ExtArgs extends runtime.Types.Extens
    * Limit how many UserInfos to update.
    */
   limit?: number
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserInfoIncludeUpdateManyAndReturn<ExtArgs> | null
 }
 
 /**
@@ -1442,6 +1958,10 @@ export type UserInfoUpsertArgs<ExtArgs extends runtime.Types.Extensions.Internal
    * Omit specific fields from the UserInfo
    */
   omit?: Prisma.UserInfoOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserInfoInclude<ExtArgs> | null
   /**
    * The filter to search for the UserInfo to update in case it exists.
    */
@@ -1469,6 +1989,10 @@ export type UserInfoDeleteArgs<ExtArgs extends runtime.Types.Extensions.Internal
    */
   omit?: Prisma.UserInfoOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserInfoInclude<ExtArgs> | null
+  /**
    * Filter which UserInfo to delete.
    */
   where: Prisma.UserInfoWhereUniqueInput
@@ -1489,6 +2013,44 @@ export type UserInfoDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.Inte
 }
 
 /**
+ * UserInfo.kantor
+ */
+export type UserInfo$kantorArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Kantor
+   */
+  select?: Prisma.KantorSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Kantor
+   */
+  omit?: Prisma.KantorOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.KantorInclude<ExtArgs> | null
+  where?: Prisma.KantorWhereInput
+}
+
+/**
+ * UserInfo.jabatan
+ */
+export type UserInfo$jabatanArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Jabatan
+   */
+  select?: Prisma.JabatanSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Jabatan
+   */
+  omit?: Prisma.JabatanOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.JabatanInclude<ExtArgs> | null
+  where?: Prisma.JabatanWhereInput
+}
+
+/**
  * UserInfo without action
  */
 export type UserInfoDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1500,4 +2062,8 @@ export type UserInfoDefaultArgs<ExtArgs extends runtime.Types.Extensions.Interna
    * Omit specific fields from the UserInfo
    */
   omit?: Prisma.UserInfoOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserInfoInclude<ExtArgs> | null
 }

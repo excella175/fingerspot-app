@@ -22,6 +22,10 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * limit,
         take: limit,
+        include: {
+          kantor: { select: { id: true, nama: true } },
+          jabatan: { select: { id: true, nama: true, kantorId: true } },
+        },
       }),
       prisma.userInfo.count({ where }),
     ]);
@@ -37,7 +41,7 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const { pin, name, facePhoto } = await request.json();
+    const { pin, name, facePhoto, kantorId, jabatanId } = await request.json();
     if (!pin || !name) {
       return NextResponse.json(
         { success: false, error: "PIN dan nama harus diisi" },
@@ -56,6 +60,12 @@ export async function PUT(request: NextRequest) {
     const data: any = { name: String(name) };
     if (facePhoto !== undefined) {
       data.facePhoto = facePhoto || null;
+    }
+    if (kantorId !== undefined) {
+      data.kantorId = kantorId || null;
+    }
+    if (jabatanId !== undefined) {
+      data.jabatanId = jabatanId || null;
     }
 
     await prisma.userInfo.update({
@@ -77,6 +87,7 @@ export async function DELETE(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const pin = searchParams.get("pin");
     const syncToDevice = searchParams.get("syncToDevice") !== "false";
+    const cloudId = searchParams.get("cloudId") || "";
 
     if (!pin) {
       return NextResponse.json(
@@ -100,11 +111,11 @@ export async function DELETE(request: NextRequest) {
     if (syncToDevice) {
       const apiKey = process.env.FINGERSPOT_API_KEY || "";
       const apiUrl = process.env.FINGERSPOT_API_URL || "https://developer.fingerspot.io/api";
-      const cloudId = process.env.FINGERSPOT_CLOUD_ID || "";
+      const targetCloudId = String(cloudId || process.env.FINGERSPOT_CLOUD_ID || "");
       fetch(`${apiUrl}/delete_userinfo`, {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ cloud_id: cloudId, trans_id: `del-${Date.now()}-${pin}`, pin }),
+        body: JSON.stringify({ cloud_id: targetCloudId, trans_id: `del-${Date.now()}-${pin}`, pin }),
       }).catch(() => {});
     }
 

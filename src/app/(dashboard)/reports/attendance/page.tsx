@@ -3,8 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   CalendarCheck,
-  ChevronLeft,
-  ChevronRight,
   FileSpreadsheet,
   FileText,
   Search,
@@ -17,6 +15,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { DateRangePicker, getDateRange } from "@/components/date-range-picker";
 
 interface DayEntry {
   date: string;
@@ -47,11 +46,6 @@ interface ReportResponse {
   report: EmployeeReport[];
 }
 
-const MONTHS = [
-  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
-];
-
 const STATUS_BADGE_VARIANT: Record<string, string> = {
   H: "default",
   A: "destructive",
@@ -74,34 +68,46 @@ const STATUS_BADGE_CLASS: Record<string, string> = {
   L: "bg-gray-100 text-gray-400 hover:bg-gray-100 border-gray-300",
 };
 
-function getDaysInMonth(year: number, month: number) {
-  return new Date(year, month, 0).getDate();
+function getDaysInRange(from: string, to: string): number[] {
+  const start = new Date(from + "T00:00:00");
+  const end = new Date(to + "T00:00:00");
+  const days: number[] = [];
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    days.push(new Date(d).getDate());
+  }
+  return days;
 }
 
 export default function AttendanceReportPage() {
-  const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth() + 1);
   const [data, setData] = useState<ReportResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [generating, setGenerating] = useState(false);
 
-  const daysInMonth = getDaysInMonth(year, month);
+  const dr = getDateRange();
+
+  const daysArray = useMemo(() => getDaysInRange(dr.from, dr.to), [dr.from, dr.to]);
 
   const fetchReport = useCallback(() => {
     setLoading(true);
-    fetch(`/api/reports?command=attendance&month=${month}&year=${year}`)
+    const d = getDateRange();
+    fetch(`/api/reports?command=attendance&from=${d.from}&to=${d.to}`)
       .then((res) => res.json())
-      .then((d: ReportResponse) => {
-        setData(d);
+      .then((d2: ReportResponse) => {
+        setData(d2);
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [month, year]);
+  }, []);
 
   useEffect(() => {
     fetchReport();
+  }, [fetchReport]);
+
+  useEffect(() => {
+    const handler = () => fetchReport();
+    window.addEventListener("popstate", handler);
+    return () => window.removeEventListener("popstate", handler);
   }, [fetchReport]);
 
   const reportData = data?.report || [];
@@ -115,10 +121,6 @@ export default function AttendanceReportPage() {
         e.pin.toLowerCase().includes(q)
     );
   }, [reportData, employeeSearch]);
-
-  const daysArray = useMemo(() => {
-    return Array.from({ length: daysInMonth }, (_, i) => i + 1);
-  }, [daysInMonth]);
 
   function getStatus(report: EmployeeReport, day: number): string | null {
     const entry = report.days.find((d) => d.day === day);
@@ -149,24 +151,6 @@ export default function AttendanceReportPage() {
     );
   }
 
-  const handlePrevMonth = () => {
-    if (month === 1) {
-      setYear(year - 1);
-      setMonth(12);
-    } else {
-      setMonth(month - 1);
-    }
-  };
-
-  const handleNextMonth = () => {
-    if (month === 12) {
-      setYear(year + 1);
-      setMonth(1);
-    } else {
-      setMonth(month + 1);
-    }
-  };
-
   const exportExcel = () => {
     const header = [
       "No",
@@ -195,14 +179,16 @@ export default function AttendanceReportPage() {
     const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Laporan");
-    XLSX.writeFile(wb, `Laporan_Kehadiran_${MONTHS[month - 1]}_${year}.xlsx`);
+    const dr = getDateRange();
+    XLSX.writeFile(wb, `Laporan_Kehadiran_${dr.from}_${dr.to}.xlsx`);
   };
 
   const exportPDF = () => {
     const doc = new jsPDF("landscape", "mm", "a4");
     const pageWidth = doc.internal.pageSize.getWidth();
     doc.setFontSize(14);
-    doc.text(`Laporan Kehadiran - ${MONTHS[month - 1]} ${year}`, pageWidth / 2, 15, {
+    const dr = getDateRange();
+    doc.text(`Laporan Kehadiran - ${dr.from} sd ${dr.to}`, pageWidth / 2, 15, {
       align: "center",
     });
     const header = [
@@ -237,7 +223,7 @@ export default function AttendanceReportPage() {
       headStyles: { fillColor: [59, 130, 246], fontSize: 6 },
       tableWidth: "auto",
     });
-    doc.save(`Laporan_Kehadiran_${MONTHS[month - 1]}_${year}.pdf`);
+    doc.save(`Laporan_Kehadiran_${dr.from}_${dr.to}.pdf`);
   };
 
   return (
@@ -259,65 +245,7 @@ export default function AttendanceReportPage() {
       <Card>
         <CardContent className="p-5">
           <div className="flex flex-wrap items-end gap-3">
-            <div className="flex items-end gap-2">
-              <div>
-                <label className="block text-[13px] font-medium text-gray-500 mb-1.5">
-                  Bulan
-                </label>
-                <select
-                  value={month}
-                  onChange={(e) => setMonth(Number(e.target.value))}
-                  className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                >
-                  {MONTHS.map((name, idx) => (
-                    <option key={idx} value={idx + 1}>
-                      {name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-[13px] font-medium text-gray-500 mb-1.5">
-                  Tahun
-                </label>
-                <select
-                  value={year}
-                  onChange={(e) => setYear(Number(e.target.value))}
-                  className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                >
-                  {Array.from({ length: 10 }, (_, i) => {
-                    const y = now.getFullYear() - 5 + i;
-                    return (
-                      <option key={y} value={y}>
-                        {y}
-                      </option>
-                    );
-                  })}
-                </select>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-1 pb-0.5">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handlePrevMonth}
-                title="Bulan sebelumnya"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="px-2 text-[13px] font-semibold text-gray-700 min-w-[120px] text-center">
-                {MONTHS[month - 1]} {year}
-              </span>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleNextMonth}
-                title="Bulan berikutnya"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
+            <DateRangePicker />
 
             <div className="flex-1 min-w-[180px] max-w-[280px]">
               <label className="block text-[13px] font-medium text-gray-500 mb-1.5">
@@ -340,9 +268,10 @@ export default function AttendanceReportPage() {
                 onClick={async () => {
                   setGenerating(true);
                   try {
-                    const res = await fetch(`/api/reports?command=generate&month=${month}&year=${year}`);
+                    const dr = getDateRange();
+                    const res = await fetch(`/api/reports?command=generate&from=${dr.from}&to=${dr.to}`);
                     const d = await res.json();
-                    if (d.success) { alert("Laporan berhasil digenerate untuk " + month + "/" + year); fetchReport(); }
+                    if (d.success) { alert("Laporan berhasil digenerate untuk " + dr.from + " sd " + dr.to); fetchReport(); }
                     else alert("Gagal: " + (d.error || ""));
                   } catch { alert("Gagal generate laporan"); }
                   setGenerating(false);
@@ -411,7 +340,7 @@ export default function AttendanceReportPage() {
               {loading ? (
                 <TableRow>
                   <TableCell
-                    colSpan={daysInMonth + 9}
+                    colSpan={daysArray.length + 9}
                     className="h-32 text-center text-muted-foreground"
                   >
                     <div className="flex items-center justify-center gap-2">
@@ -423,7 +352,7 @@ export default function AttendanceReportPage() {
               ) : filteredData.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={daysInMonth + 9}
+                    colSpan={daysArray.length + 9}
                     className="h-32 text-center text-muted-foreground"
                   >
                     {employeeSearch

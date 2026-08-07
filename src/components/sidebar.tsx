@@ -22,6 +22,7 @@ import {
   Gavel,
   Briefcase,
   CalendarDays,
+  Building2,
 } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -55,6 +56,7 @@ const navigation = [
     ],
   },
   { name: "Data User", href: "/userinfo", icon: Users },
+  { name: "Kantor & Jabatan", href: "/kantor", icon: Building2 },
   { name: "Perangkat", href: "/devices", icon: MonitorCog },
   { name: "Riwayat API", href: "/api-logs", icon: ScrollText },
   { name: "Riwayat Webhook", href: "/webhook-logs", icon: Webhook },

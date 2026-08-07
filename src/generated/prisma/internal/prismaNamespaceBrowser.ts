@@ -54,6 +54,8 @@ export const ModelName = {
   Device: 'Device',
   AttendanceLog: 'AttendanceLog',
   UserInfo: 'UserInfo',
+  Kantor: 'Kantor',
+  Jabatan: 'Jabatan',
   Aturan: 'Aturan',
   JamKerja: 'JamKerja',
   JadwalAuto: 'JadwalAuto',
@@ -126,6 +128,8 @@ export const UserInfoScalarFieldEnum = {
   vein: 'vein',
   template: 'template',
   facePhoto: 'facePhoto',
+  kantorId: 'kantorId',
+  jabatanId: 'jabatanId',
   deviceCloudId: 'deviceCloudId',
   rawPayload: 'rawPayload',
   createdAt: 'createdAt',
@@ -133,6 +137,28 @@ export const UserInfoScalarFieldEnum = {
 } as const
 
 export type UserInfoScalarFieldEnum = (typeof UserInfoScalarFieldEnum)[keyof typeof UserInfoScalarFieldEnum]
+
+
+export const KantorScalarFieldEnum = {
+  id: 'id',
+  nama: 'nama',
+  alamat: 'alamat',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type KantorScalarFieldEnum = (typeof KantorScalarFieldEnum)[keyof typeof KantorScalarFieldEnum]
+
+
+export const JabatanScalarFieldEnum = {
+  id: 'id',
+  nama: 'nama',
+  kantorId: 'kantorId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type JabatanScalarFieldEnum = (typeof JabatanScalarFieldEnum)[keyof typeof JabatanScalarFieldEnum]
 
 
 export const AturanScalarFieldEnum = {

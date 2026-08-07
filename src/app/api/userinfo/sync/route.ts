@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(request: NextRequest) {
   try {
-    const { pin } = await request.json();
+    const { pin, cloudId } = await request.json();
     if (!pin) {
       return NextResponse.json({ success: false, error: "PIN harus diisi" }, { status: 400 });
     }
@@ -28,13 +28,13 @@ export async function POST(request: NextRequest) {
 
     const apiKey = process.env.FINGERSPOT_API_KEY || "";
     const apiUrl = process.env.FINGERSPOT_API_URL || "https://developer.fingerspot.io/api";
-    const cloudId = process.env.FINGERSPOT_CLOUD_ID || "";
+    const targetCloudId = String(cloudId || process.env.FINGERSPOT_CLOUD_ID || "");
 
     const res = await fetch(`${apiUrl}/set_userinfo`, {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        cloud_id: cloudId,
+        cloud_id: targetCloudId,
         trans_id: `sync-${Date.now()}-${pin}`,
         data: {
           pin: user.pin,

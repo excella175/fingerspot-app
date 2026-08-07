@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { DateRangePicker, getDateRange } from "@/components/date-range-picker";
 
 interface Employee {
   pin: string;
@@ -72,9 +72,6 @@ function formatTime(val: string | null) {
 }
 
 export default function ReportDetailPage() {
-  const now = new Date();
-  const [month, setMonth] = useState(String(now.getMonth() + 1).padStart(2, "0"));
-  const [year, setYear] = useState(String(now.getFullYear()));
   const [employeePin, setEmployeePin] = useState("");
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [report, setReport] = useState<ReportEntry[]>([]);
@@ -82,6 +79,11 @@ export default function ReportDetailPage() {
   const [error, setError] = useState("");
   const [exporting, setExporting] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+
+  function dateLabel() {
+    const dr = getDateRange();
+    return `${dr.from} sd ${dr.to}`;
+  }
 
   useEffect(() => {
     fetch("/api/userinfo?limit=9999")
@@ -99,7 +101,8 @@ export default function ReportDetailPage() {
   const fetchReport = useCallback(() => {
     setLoading(true);
     setError("");
-    const params = new URLSearchParams({ command: "detail", month, year });
+    const dr = getDateRange();
+    const params = new URLSearchParams({ command: "detail", from: dr.from, to: dr.to });
     if (employeePin) params.set("employeePin", employeePin);
 
     fetch(`/api/reports?${params}`)
@@ -116,10 +119,16 @@ export default function ReportDetailPage() {
         setError("Terjadi kesalahan saat memuat data");
         setLoading(false);
       });
-  }, [month, year, employeePin]);
+  }, [employeePin]);
 
   useEffect(() => {
     fetchReport();
+  }, [fetchReport]);
+
+  useEffect(() => {
+    const handler = () => fetchReport();
+    window.addEventListener("popstate", handler);
+    return () => window.removeEventListener("popstate", handler);
   }, [fetchReport]);
 
   const summary = report.reduce(
@@ -163,7 +172,8 @@ export default function ReportDetailPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `laporan-detail-${month}-${year}.xlsx`;
+      const dl = getDateRange();
+      a.download = `laporan-detail_${dl.from}_${dl.to}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
     } catch {
@@ -176,7 +186,8 @@ export default function ReportDetailPage() {
     setExporting("pdf");
     try {
       const doc = new jsPDF({ orientation: "landscape" });
-      const title = `Laporan Detail ${month}/${year}`;
+      const dl3 = getDateRange();
+      const title = `Laporan Detail ${dl3.from} sd ${dl3.to}`;
       doc.setFontSize(14);
       doc.text(title, 14, 16);
       doc.setFontSize(8);
@@ -217,7 +228,8 @@ export default function ReportDetailPage() {
         headStyles: { fillColor: [59, 130, 246] },
       });
 
-      doc.save(`laporan-detail-${month}-${year}.pdf`);
+      const dl2 = getDateRange();
+      doc.save(`laporan-detail_${dl2.from}_${dl2.to}.pdf`);
     } catch {
       alert("Gagal export PDF");
     }
@@ -241,20 +253,7 @@ export default function ReportDetailPage() {
       <Card>
         <CardContent className="p-5">
           <div className="flex flex-wrap items-end gap-3">
-            <div className="min-w-[180px]">
-              <label className="block text-[13px] font-medium text-gray-500 mb-1.5">
-                Bulan / Tahun
-              </label>
-              <Input
-                type="month"
-                value={`${year}-${month}`}
-                onChange={(e) => {
-                  const [y, m] = e.target.value.split("-");
-                  setYear(y);
-                  setMonth(m);
-                }}
-              />
-            </div>
+            <DateRangePicker />
             <div className="min-w-[200px] flex-1">
               <label className="block text-[13px] font-medium text-gray-500 mb-1.5">
                 Karyawan
@@ -298,9 +297,10 @@ export default function ReportDetailPage() {
               onClick={async () => {
                 setGenerating(true);
                 try {
-                  const res = await fetch(`/api/reports?command=generate&month=${month}&year=${year}`);
+                  const dr = getDateRange();
+                  const res = await fetch(`/api/reports?command=generate&from=${dr.from}&to=${dr.to}`);
                   const d = await res.json();
-                  if (d.success) { alert("Laporan berhasil digenerate untuk " + month + "/" + year); fetchReport(); }
+                  if (d.success) { alert("Laporan berhasil digenerate untuk " + dr.from + " sd " + dr.to); fetchReport(); }
                   else alert("Gagal: " + (d.error || ""));
                 } catch { alert("Gagal generate laporan"); }
                 setGenerating(false);

@@ -48,23 +48,64 @@ model AttendanceLog {
 // USER INFO (Data User dari Mesin)
 // ============================================
 model UserInfo {
-  id          String   @id @default(cuid())
-  pin         String   @unique
-  name        String
-  password    String?
-  privilege   Int      @default(1)
-  finger      Int      @default(0)
-  face        Int      @default(0)
-  rfid        Int      @default(0)
-  vein        Int      @default(0)
-  template    String?
-  facePhoto   String?   @map("face_photo")
-  deviceCloudId String? @map("device_cloud_id")
-  rawPayload  Json?    @map("raw_payload")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id            String   @id @default(cuid())
+  pin           String   @unique
+  name          String
+  password      String?
+  privilege     Int      @default(1)
+  finger        Int      @default(0)
+  face          Int      @default(0)
+  rfid          Int      @default(0)
+  vein          Int      @default(0)
+  template      String?
+  facePhoto     String?  @map("face_photo")
+  kantorId      String?  @map("kantor_id")
+  jabatanId     String?  @map("jabatan_id")
+  deviceCloudId String?  @map("device_cloud_id")
+  rawPayload    Json?    @map("raw_payload")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
+  kantor  Kantor?  @relation(fields: [kantorId], references: [id], onDelete: SetNull)
+  jabatan Jabatan? @relation(fields: [jabatanId], references: [id], onDelete: SetNull)
+
+  @@index([kantorId])
+  @@index([jabatanId])
   @@map("user_infos")
+}
+
+// ============================================
+// KANTOR (Office / Branch)
+// ============================================
+model Kantor {
+  id        String    @id @default(cuid())
+  nama      String    @unique
+  alamat    String?
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  jabatans Jabatan[]
+  users    UserInfo[]
+
+  @@map("kantors")
+}
+
+// ============================================
+// JABATAN (Position, 1 jabatan hanya milik 1 kantor)
+// ============================================
+model Jabatan {
+  id        String    @id @default(cuid())
+  nama      String
+  kantorId  String    @map("kantor_id")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  kantor Kantor     @relation(fields: [kantorId], references: [id], onDelete: Cascade)
+  users  UserInfo[]
+
+  @@unique([kantorId, nama])
+  @@index([kantorId])
+  @@map("jabatans")
 }
 
 // ============================================

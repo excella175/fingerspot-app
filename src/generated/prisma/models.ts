@@ -11,6 +11,8 @@
 export type * from './models/Device'
 export type * from './models/AttendanceLog'
 export type * from './models/UserInfo'
+export type * from './models/Kantor'
+export type * from './models/Jabatan'
 export type * from './models/Aturan'
 export type * from './models/JamKerja'
 export type * from './models/JadwalAuto'
