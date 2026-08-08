@@ -11,12 +11,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { DateRangePicker, getDateRange } from "@/components/date-range-picker";
 
-interface Employee {
-  pin: string;
-  name: string;
-}
-
 interface ReportEntry {
+  employeePin: string;
+  employeeName: string;
+  employeeKantor: string;
+  employeeJabatan: string;
   date: string;
   dayName: string;
   scanIn: string | null;
@@ -32,6 +31,12 @@ interface ReportEntry {
 interface ReportResponse {
   success: boolean;
   report: ReportEntry[];
+}
+
+interface Kantor {
+  id: string;
+  nama: string;
+  jabatans: { id: string; nama: string }[];
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -72,38 +77,35 @@ function formatTime(val: string | null) {
 }
 
 export default function ReportDetailPage() {
-  const [employeePin, setEmployeePin] = useState("");
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [pin, setPin] = useState("");
+  const [name, setName] = useState("");
+  const [kantorId, setKantorId] = useState("");
+  const [jabatanId, setJabatanId] = useState("");
+  const [kantors, setKantors] = useState<Kantor[]>([]);
   const [report, setReport] = useState<ReportEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [exporting, setExporting] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
 
-  function dateLabel() {
-    const dr = getDateRange();
-    return `${dr.from} sd ${dr.to}`;
-  }
-
   useEffect(() => {
-    fetch("/api/userinfo?limit=9999")
+    fetch("/api/kantor")
       .then((r) => r.json())
-      .then((d) => {
-        const list: Employee[] = (d.data || []).map((u: any) => ({
-          pin: u.pin,
-          name: u.name,
-        }));
-        setEmployees(list);
-      })
+      .then((d) => setKantors(d.data || []))
       .catch(() => {});
   }, []);
+
+  const selectedKantor = kantors.find((k) => k.id === kantorId);
 
   const fetchReport = useCallback(() => {
     setLoading(true);
     setError("");
     const dr = getDateRange();
     const params = new URLSearchParams({ command: "detail", from: dr.from, to: dr.to });
-    if (employeePin) params.set("employeePin", employeePin);
+    if (pin) params.set("employeePin", pin);
+    if (name) params.set("name", name);
+    if (kantorId) params.set("kantorId", kantorId);
+    if (jabatanId) params.set("jabatanId", jabatanId);
 
     fetch(`/api/reports?${params}`)
       .then((res) => res.json())
@@ -119,7 +121,7 @@ export default function ReportDetailPage() {
         setError("Terjadi kesalahan saat memuat data");
         setLoading(false);
       });
-  }, [employeePin]);
+  }, [pin, name, kantorId, jabatanId]);
 
   useEffect(() => {
     fetchReport();
@@ -152,6 +154,10 @@ export default function ReportDetailPage() {
     setExporting("excel");
     try {
       const rows = report.map((r) => ({
+        ID: r.employeePin,
+        Nama: r.employeeName,
+        Kantor: r.employeeKantor || "-",
+        Jabatan: r.employeeJabatan || "-",
         Tanggal: r.date,
         Hari: r.dayName,
         "Jadwal Masuk": formatTime(r.scheduledStart),
@@ -195,6 +201,10 @@ export default function ReportDetailPage() {
 
       const headers = [
         [
+          "ID",
+          "Nama",
+          "Kantor",
+          "Jabatan",
           "Tanggal",
           "Hari",
           "Jadwal Masuk",
@@ -208,6 +218,10 @@ export default function ReportDetailPage() {
         ],
       ];
       const body = report.map((r) => [
+        r.employeePin,
+        r.employeeName,
+        r.employeeKantor || "-",
+        r.employeeJabatan || "-",
         r.date,
         r.dayName,
         formatTime(r.scheduledStart),
@@ -236,11 +250,14 @@ export default function ReportDetailPage() {
     setExporting(null);
   };
 
+  const inputCls =
+    "flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50">
-          <CalendarClock className="h-5 w-5 text-violet-600" />
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-sm shadow-violet-200">
+          <CalendarClock className="h-5 w-5 text-white" />
         </div>
         <div>
           <h1 className="text-xl font-bold text-gray-900">Laporan Detail</h1>
@@ -253,24 +270,62 @@ export default function ReportDetailPage() {
       <Card>
         <CardContent className="p-5">
           <div className="flex flex-wrap items-end gap-3">
-            <DateRangePicker />
-            <div className="min-w-[200px] flex-1">
+            <div className="w-32">
               <label className="block text-[13px] font-medium text-gray-500 mb-1.5">
-                Karyawan
+                ID (PIN)
+              </label>
+              <input
+                type="text"
+                value={pin}
+                onChange={(e) => setPin(e.target.value)}
+                placeholder="Semua"
+                className={inputCls}
+              />
+            </div>
+            <div className="w-44">
+              <label className="block text-[13px] font-medium text-gray-500 mb-1.5">
+                Nama
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Cari nama..."
+                className={inputCls}
+              />
+            </div>
+            <div className="w-44">
+              <label className="block text-[13px] font-medium text-gray-500 mb-1.5">
+                Kantor
               </label>
               <select
-                value={employeePin}
-                onChange={(e) => setEmployeePin(e.target.value)}
-                className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                value={kantorId}
+                onChange={(e) => { setKantorId(e.target.value); setJabatanId(""); }}
+                className={inputCls}
               >
-                <option value="">Semua Karyawan</option>
-                {employees.map((emp) => (
-                  <option key={emp.pin} value={emp.pin}>
-                    {emp.name} ({emp.pin})
-                  </option>
+                <option value="">Semua Kantor</option>
+                {kantors.map((k) => (
+                  <option key={k.id} value={k.id}>{k.nama}</option>
                 ))}
               </select>
             </div>
+            <div className="w-44">
+              <label className="block text-[13px] font-medium text-gray-500 mb-1.5">
+                Jabatan
+              </label>
+              <select
+                value={jabatanId}
+                onChange={(e) => setJabatanId(e.target.value)}
+                disabled={!kantorId}
+                className={inputCls + " disabled:opacity-50"}
+              >
+                <option value="">{kantorId ? "Semua Jabatan" : "Pilih Kantor dulu"}</option>
+                {selectedKantor?.jabatans.map((j) => (
+                  <option key={j.id} value={j.id}>{j.nama}</option>
+                ))}
+              </select>
+            </div>
+            <DateRangePicker />
             <Button onClick={fetchReport} disabled={loading}>
               <Search className={`h-4 w-4 mr-1.5 ${loading ? "animate-spin" : ""}`} />
               {loading ? "Memuat..." : "Tampilkan"}
@@ -324,6 +379,10 @@ export default function ReportDetailPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>ID</TableHead>
+                <TableHead>Nama</TableHead>
+                <TableHead>Kantor</TableHead>
+                <TableHead>Jabatan</TableHead>
                 <TableHead>Tanggal</TableHead>
                 <TableHead>Hari</TableHead>
                 <TableHead>Jadwal Masuk</TableHead>
@@ -339,7 +398,7 @@ export default function ReportDetailPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="h-32 text-center text-muted-foreground">
+                  <TableCell colSpan={14} className="h-32 text-center text-muted-foreground">
                     <div className="flex items-center justify-center gap-2">
                       <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
                       Memuat data...
@@ -348,15 +407,35 @@ export default function ReportDetailPage() {
                 </TableRow>
               ) : report.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="h-32 text-center text-muted-foreground">
-                    {employeePin
-                      ? "Tidak ada data untuk karyawan yang dipilih"
+                  <TableCell colSpan={14} className="h-32 text-center text-muted-foreground">
+                    {pin || name || kantorId || jabatanId
+                      ? "Tidak ada data untuk filter yang dipilih"
                       : "Pilih periode dan klik Tampilkan untuk melihat laporan"}
                   </TableCell>
                 </TableRow>
               ) : (
                 report.map((row, idx) => (
                   <TableRow key={idx}>
+                    <TableCell className="font-mono">{row.employeePin}</TableCell>
+                    <TableCell className="font-medium">{row.employeeName}</TableCell>
+                    <TableCell className="text-[12.5px]">
+                      {row.employeeKantor ? (
+                        <span className="rounded-md bg-indigo-50 px-2 py-0.5 text-[11.5px] font-medium text-indigo-700">
+                          {row.employeeKantor}
+                        </span>
+                      ) : (
+                        <span className="text-gray-300">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-[12.5px]">
+                      {row.employeeJabatan ? (
+                        <span className="rounded-md bg-blue-50 px-2 py-0.5 text-[11.5px] font-medium text-blue-700">
+                          {row.employeeJabatan}
+                        </span>
+                      ) : (
+                        <span className="text-gray-300">-</span>
+                      )}
+                    </TableCell>
                     <TableCell className="font-mono">{row.date}</TableCell>
                     <TableCell>{row.dayName}</TableCell>
                     <TableCell className="font-mono">{formatTime(row.scheduledStart)}</TableCell>

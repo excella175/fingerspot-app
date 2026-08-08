@@ -1,8 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 function pad(n: number) {
-  return n.toString().padStart(2, "0");
+  return String(n).padStart(2, "0");
+}
+
+function dateStrFromDate(d: Date) {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
 function dayNameFromDate(date: Date) {
@@ -24,7 +28,7 @@ function dateRangeFromParams(searchParams: URLSearchParams): { dates: Date[]; da
     const dateStrs: string[] = [];
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       dates.push(new Date(d));
-      dateStrs.push(d.toISOString().split("T")[0]);
+      dateStrs.push(dateStrFromDate(d));
     }
     return { dates, dateStrs, from: f, to: t, isMonth: false, month: 0, year: 0 };
   }
@@ -36,7 +40,8 @@ function dateRangeFromParams(searchParams: URLSearchParams): { dates: Date[]; da
   const dates: Date[] = [];
   const dateStrs: string[] = [];
   for (let day = 1; day <= totalDays; day++) {
-    dates.push(new Date(y, m - 1, day));
+    const d = new Date(y, m - 1, day);
+    dates.push(d);
     dateStrs.push(`${y}-${pad(m)}-${pad(day)}`);
   }
   return { dates, dateStrs, from: `${y}-${pad(m)}-01`, to: `${y}-${pad(m)}-${pad(totalDays)}`, isMonth: true, month: m, year: y };
@@ -53,27 +58,68 @@ function minutesToStr(m: number): string {
   return `${m < 0 ? "-" : ""}${h}h ${min}m`;
 }
 
-async function getScheduleForEmployee(pin: string, date: Date, dayOfWeek: number): Promise<{ jamKerjaKode: string; startTime?: string; endTime?: string } | null> {
-  // 1. Check manual schedule first
-  const manual = await prisma.jadwalManual.findUnique({
-    where: { employeePin_date: { employeePin: pin, date } },
-  });
-  if (manual) return { jamKerjaKode: manual.jamKerjaKode, startTime: manual.startTime || undefined, endTime: manual.endTime || undefined };
+function employeeWhere(searchParams: URLSearchParams) {
+  const where: any = {};
+  const pin = searchParams.get("employeePin") || searchParams.get("pin") || "";
+  const name = searchParams.get("name") || "";
+  const kantorId = searchParams.get("kantorId") || "";
+  const jabatanId = searchParams.get("jabatanId") || "";
+  if (pin) where.pin = pin;
+  if (name) where.name = { contains: name, mode: "insensitive" };
+  if (kantorId) where.kantorId = kantorId;
+  if (jabatanId) where.jabatanId = jabatanId;
+  return where;
+}
 
-  // 2. Check auto schedule
-  const autoEmp = await prisma.jadwalAutoEmployee.findFirst({
-    where: { employeePin: pin },
-    include: {
-      jadwal: {
-        include: { days: true },
-      },
-    },
+const employeeSelect = {
+  pin: true,
+  name: true,
+  kantor: { select: { nama: true } },
+  jabatan: { select: { nama: true } },
+} as const;
+
+interface ScheduleInfo {
+  jamKerjaKode: string;
+  startTime?: string;
+  endTime?: string;
+}
+
+// Batch-fetch schedules (manual + auto) for many employees over a date range.
+async function buildScheduleIndex(pins: string[], dates: Date[]): Promise<(pin: string, date: Date) => ScheduleInfo | null> {
+  const start = dates[0];
+  const end = dates[dates.length - 1];
+
+  const manual = await prisma.jadwalManual.findMany({
+    where: { employeePin: { in: pins }, date: { gte: start, lte: end } },
   });
-  if (autoEmp) {
-    const day = autoEmp.jadwal.days.find((d: { dayOfWeek: number; jamKerjaKode: string }) => d.dayOfWeek === dayOfWeek);
-    if (day && day.jamKerjaKode) return { jamKerjaKode: day.jamKerjaKode };
+  const manualMap: Record<string, Record<string, ScheduleInfo>> = {};
+  for (const m of manual) {
+    const k = dateStrFromDate(m.date);
+    if (!manualMap[m.employeePin]) manualMap[m.employeePin] = {};
+    manualMap[m.employeePin][k] = {
+      jamKerjaKode: m.jamKerjaKode,
+      startTime: m.startTime || undefined,
+      endTime: m.endTime || undefined,
+    };
   }
-  return null;
+
+  const autoEmp = await prisma.jadwalAutoEmployee.findMany({
+    where: { employeePin: { in: pins } },
+    include: { jadwal: { include: { days: true } } },
+  });
+  const autoMap: Record<string, Record<number, string>> = {};
+  for (const ae of autoEmp) {
+    const days: Record<number, string> = {};
+    for (const d of ae.jadwal.days) days[d.dayOfWeek] = d.jamKerjaKode;
+    autoMap[ae.employeePin] = days;
+  }
+
+  return (pin: string, date: Date) => {
+    const ds = dateStrFromDate(date);
+    if (manualMap[pin] && manualMap[pin][ds]) return manualMap[pin][ds];
+    const dayCode = autoMap[pin] && autoMap[pin][date.getDay()];
+    return dayCode ? { jamKerjaKode: dayCode } : null;
+  };
 }
 
 async function handleDetail(searchParams: URLSearchParams) {
@@ -82,68 +128,110 @@ async function handleDetail(searchParams: URLSearchParams) {
 
   const employees = employeePin
     ? [{ pin: employeePin }]
-    : await prisma.userInfo.findMany({ select: { pin: true, name: true } });
+    : await prisma.userInfo.findMany({ where: employeeWhere(searchParams), select: employeeSelect });
+
+  const pins = employees.map((e) => e.pin);
+
+  // 1) Employee name/kantor/jabatan — ONE query
+  const empRows = await prisma.userInfo.findMany({
+    where: { pin: { in: pins } },
+    select: { pin: true, name: true, kantor: { select: { nama: true } }, jabatan: { select: { nama: true } } },
+  });
+  const empMap = new Map(empRows.map((e) => [e.pin, e]));
+
+  const rangeStart = new Date(`${dateStrs[0]}T00:00:00+07:00`);
+  const rangeEnd = new Date(`${dateStrs[dateStrs.length - 1]}T23:59:59+07:00`);
+
+  // 2) Approved leaves in range — ONE query
+  const leaves = await prisma.riwayatIzinCuti.findMany({
+    where: { employeePin: { in: pins }, status: "approved", startDate: { lte: rangeEnd }, endDate: { gte: rangeStart } },
+  });
+  const leavesByPin: Record<string, typeof leaves> = {};
+  for (const l of leaves) {
+    if (!leavesByPin[l.employeePin]) leavesByPin[l.employeePin] = [];
+    leavesByPin[l.employeePin].push(l);
+  }
+
+  // 3) Master izin — ONE query
+  const masterIds = [...new Set(leaves.map((l) => l.masterIzinId))];
+  const masters = masterIds.length ? await prisma.masterIzinCuti.findMany({ where: { id: { in: masterIds } } }) : [];
+  const masterMap = new Map(masters.map((m) => [m.id, m]));
+
+  // 4) Schedules — batched
+  const scheduleFor = await buildScheduleIndex(pins, dates);
+
+  // 5) Jam kerja + aturan kodes — pre-collect, then batch queries
+  const jkCodes = new Set<string>();
+  for (const emp of employees) {
+    for (const date of dates) {
+      const s = scheduleFor(emp.pin, date);
+      if (s?.jamKerjaKode) jkCodes.add(s.jamKerjaKode);
+    }
+  }
+  const jamKerjas = jkCodes.size ? await prisma.jamKerja.findMany({ where: { kode: { in: [...jkCodes] } } }) : [];
+  const jkMap = new Map(jamKerjas.map((j) => [j.kode, j]));
+  const aturanCodes = new Set<string>();
+  for (const j of jamKerjas) if (j.aturanKode) aturanCodes.add(j.aturanKode);
+  const aturans = aturanCodes.size ? await prisma.aturan.findMany({ where: { kode: { in: [...aturanCodes] } } }) : [];
+  const aturanMap = new Map(aturans.map((a) => [a.kode, a]));
 
   const result: any[] = [];
 
   for (const emp of employees) {
-    const empData = await prisma.userInfo.findUnique({ where: { pin: emp.pin }, select: { name: true } });
-    const empName = empData?.name || emp.pin;
+    const info = empMap.get(emp.pin);
+    const empName = info?.name || emp.pin;
+    const empKantor = (emp as any).kantor?.nama || info?.kantor?.nama || "";
+    const empJabatan = (emp as any).jabatan?.nama || info?.jabatan?.nama || "";
+
+    // 6) Scans for the whole range — ONE query per employee
+    const scans = await prisma.attendanceLog.findMany({
+      where: { employeePin: emp.pin, scanTime: { gte: rangeStart, lte: rangeEnd } },
+      orderBy: { scanTime: "asc" },
+    });
+    const scansByDate: Record<string, typeof scans> = {};
+    for (const s of scans) {
+      const k = dateStrFromDate(s.scanTime);
+      if (!scansByDate[k]) scansByDate[k] = [];
+      scansByDate[k].push(s);
+    }
+
+    const empLeaves = leavesByPin[emp.pin] || [];
 
     for (let i = 0; i < dates.length; i++) {
       const date = dates[i];
       const dateStr = dateStrs[i];
 
-      // Leave/Izin check
-      const leave = await prisma.riwayatIzinCuti.findFirst({
-        where: {
-          employeePin: emp.pin,
-          status: "approved",
-          startDate: { lte: date },
-          endDate: { gte: date },
-        },
-      });
+      // Leave/Izin check (in-memory)
+      const leave = empLeaves.find((l) => l.startDate <= date && l.endDate >= date);
 
       if (leave) {
-        const master = await prisma.masterIzinCuti.findUnique({ where: { id: leave.masterIzinId } });
+        const master = masterMap.get(leave.masterIzinId);
         const statusCode = master?.statusAbsensi || "I";
-        result.push({ employeePin: emp.pin, employeeName: empName, date: dateStr, dayName: dayNameFromDate(date), status: statusCode, scanIn: null, scanOut: null, scheduledStart: null, scheduledEnd: null, lateMinutes: null, earlyLeaveMinutes: null, overtimeMinutes: null, note: master?.nama || "Izin" });
+        result.push({ employeePin: emp.pin, employeeName: empName, employeeKantor: empKantor, employeeJabatan: empJabatan, date: dateStr, dayName: dayNameFromDate(date), status: statusCode, scanIn: null, scanOut: null, scheduledStart: null, scheduledEnd: null, lateMinutes: null, earlyLeaveMinutes: null, overtimeMinutes: null, note: master?.nama || "Izin" });
         continue;
       }
 
       if (isWeekendFromDate(date)) {
-        result.push({ employeePin: emp.pin, employeeName: empName, date: dateStr, dayName: dayNameFromDate(date), status: "L", scanIn: null, scanOut: null, scheduledStart: null, scheduledEnd: null, lateMinutes: null, earlyLeaveMinutes: null, overtimeMinutes: null, note: "Libur" });
+        result.push({ employeePin: emp.pin, employeeName: empName, employeeKantor: empKantor, employeeJabatan: empJabatan, date: dateStr, dayName: dayNameFromDate(date), status: "L", scanIn: null, scanOut: null, scheduledStart: null, scheduledEnd: null, lateMinutes: null, earlyLeaveMinutes: null, overtimeMinutes: null, note: "Libur" });
         continue;
       }
 
       // Get schedule
-      const sched = await getScheduleForEmployee(emp.pin, date, date.getDay());
-      const jamKerja = sched?.jamKerjaKode
-        ? await prisma.jamKerja.findUnique({ where: { kode: sched.jamKerjaKode } })
-        : null;
+      const sched = scheduleFor(emp.pin, date);
+      const jamKerja = sched?.jamKerjaKode ? jkMap.get(sched.jamKerjaKode) || null : null;
 
       const scheduledStart = sched?.startTime || jamKerja?.startTime || null;
       const scheduledEnd = sched?.endTime || jamKerja?.endTime || null;
 
-      // Get scans
-      const scans = await prisma.attendanceLog.findMany({
-        where: {
-          employeePin: emp.pin,
-          scanTime: {
-            gte: new Date(`${dateStr}T00:00:00+07:00`),
-            lte: new Date(`${dateStr}T23:59:59+07:00`),
-          },
-        },
-        orderBy: { scanTime: "asc" },
-      });
+      const dayScans = scansByDate[dateStr];
 
-      if (scans.length === 0) {
-        result.push({ employeePin: emp.pin, employeeName: empName, date: dateStr, dayName: dayNameFromDate(date), status: "A", scanIn: null, scanOut: null, scheduledStart, scheduledEnd, lateMinutes: null, earlyLeaveMinutes: null, overtimeMinutes: null, note: "Alpha" });
+      if (!dayScans || dayScans.length === 0) {
+        result.push({ employeePin: emp.pin, employeeName: empName, employeeKantor: empKantor, employeeJabatan: empJabatan, date: dateStr, dayName: dayNameFromDate(date), status: "A", scanIn: null, scanOut: null, scheduledStart, scheduledEnd, lateMinutes: null, earlyLeaveMinutes: null, overtimeMinutes: null, note: "Alpha" });
         continue;
       }
 
-      const firstScan = scans[0].scanTime;
-      const lastScan = scans[scans.length - 1].scanTime;
+      const firstScan = dayScans[0].scanTime;
+      const lastScan = dayScans[dayScans.length - 1].scanTime;
 
       let status = "H";
       let lateMinutes: number | null = null;
@@ -153,17 +241,14 @@ async function handleDetail(searchParams: URLSearchParams) {
 
       if (scheduledStart) {
         const schedStartMin = toMinutes(scheduledStart);
-        const scanInMin = firstScan.getUTCHours() * 60 + firstScan.getUTCMinutes() + firstScan.getTimezoneOffset() + 420; // +07:00 offset
-        // Adjust for timezone
         const localHours = firstScan.getHours();
         const localMinutes = firstScan.getMinutes();
         const scanInLocalMin = localHours * 60 + localMinutes;
         const diffLate = scanInLocalMin - schedStartMin;
 
-        // Get aturan tolerance
         let tolerance = 0;
         if (jamKerja?.aturanKode) {
-          const aturan = await prisma.aturan.findUnique({ where: { kode: jamKerja.aturanKode } });
+          const aturan = aturanMap.get(jamKerja.aturanKode);
           tolerance = aturan?.toleransiTerlambat || 0;
         }
 
@@ -181,7 +266,7 @@ async function handleDetail(searchParams: URLSearchParams) {
 
         let tolerance = 0;
         if (jamKerja?.aturanKode) {
-          const aturan = await prisma.aturan.findUnique({ where: { kode: jamKerja.aturanKode } });
+          const aturan = aturanMap.get(jamKerja.aturanKode);
           tolerance = aturan?.toleransiPulangCepat || 0;
         }
 
@@ -192,10 +277,9 @@ async function handleDetail(searchParams: URLSearchParams) {
         }
 
         // Overtime
-        if (jamKerja?.lemburAktif && scheduledEnd) {
+        if (jamKerja?.lemburAktif) {
           const scanOutMin = scanOutLocalMin;
-          const schedEnd = schedEndMin;
-          const overtime = scanOutMin - schedEnd;
+          const overtime = scanOutMin - schedEndMin;
           if (overtime > 0) {
             overtimeMinutes = overtime;
             note += `${note ? ", " : ""}Lembur ${minutesToStr(overtime)}`;
@@ -206,6 +290,8 @@ async function handleDetail(searchParams: URLSearchParams) {
       result.push({
         employeePin: emp.pin,
         employeeName: empName,
+        employeeKantor: empKantor,
+        employeeJabatan: empJabatan,
         date: dateStr,
         dayName: dayNameFromDate(date),
         status,
@@ -227,12 +313,65 @@ async function handleDetail(searchParams: URLSearchParams) {
 async function handleAttendance(searchParams: URLSearchParams) {
   const { dates, dateStrs, from, to, isMonth, month, year } = dateRangeFromParams(searchParams);
 
-  const employees = await prisma.userInfo.findMany({ select: { pin: true, name: true }, orderBy: { name: "asc" } });
+  const employees = await prisma.userInfo.findMany({
+    where: employeeWhere(searchParams),
+    select: employeeSelect,
+    orderBy: { name: "asc" },
+  });
+
+  const pins = employees.map((e) => e.pin);
+  const rangeStart = new Date(`${dateStrs[0]}T00:00:00+07:00`);
+  const rangeEnd = new Date(`${dateStrs[dateStrs.length - 1]}T23:59:59+07:00`);
+
+  // Leaves — ONE query
+  const leaves = await prisma.riwayatIzinCuti.findMany({
+    where: { employeePin: { in: pins }, status: "approved", startDate: { lte: rangeEnd }, endDate: { gte: rangeStart } },
+  });
+  const leavesByPin: Record<string, typeof leaves> = {};
+  for (const l of leaves) {
+    if (!leavesByPin[l.employeePin]) leavesByPin[l.employeePin] = [];
+    leavesByPin[l.employeePin].push(l);
+  }
+
+  const masterIds = [...new Set(leaves.map((l) => l.masterIzinId))];
+  const masters = masterIds.length ? await prisma.masterIzinCuti.findMany({ where: { id: { in: masterIds } } }) : [];
+  const masterMap = new Map(masters.map((m) => [m.id, m]));
+
+  const scheduleFor = await buildScheduleIndex(pins, dates);
+
+  const jkCodes = new Set<string>();
+  for (const emp of employees) {
+    for (const date of dates) {
+      const s = scheduleFor(emp.pin, date);
+      if (s?.jamKerjaKode) jkCodes.add(s.jamKerjaKode);
+    }
+  }
+  const jamKerjas = jkCodes.size ? await prisma.jamKerja.findMany({ where: { kode: { in: [...jkCodes] } } }) : [];
+  const jkMap = new Map(jamKerjas.map((j) => [j.kode, j]));
+  const aturanCodes = new Set<string>();
+  for (const j of jamKerjas) if (j.aturanKode) aturanCodes.add(j.aturanKode);
+  const aturans = aturanCodes.size ? await prisma.aturan.findMany({ where: { kode: { in: [...aturanCodes] } } }) : [];
+  const aturanMap = new Map(aturans.map((a) => [a.kode, a]));
+
   const report: any[] = [];
 
   for (const emp of employees) {
     const days: any[] = [];
     const totals: Record<string, number> = { H: 0, A: 0, I: 0, S: 0, C: 0, D: 0, TL: 0, PL: 0, L: 0 };
+
+    // Scans — ONE query per employee
+    const scans = await prisma.attendanceLog.findMany({
+      where: { employeePin: emp.pin, scanTime: { gte: rangeStart, lte: rangeEnd } },
+      orderBy: { scanTime: "asc" },
+    });
+    const scansByDate: Record<string, typeof scans> = {};
+    for (const s of scans) {
+      const k = dateStrFromDate(s.scanTime);
+      if (!scansByDate[k]) scansByDate[k] = [];
+      scansByDate[k].push(s);
+    }
+
+    const empLeaves = leavesByPin[emp.pin] || [];
 
     for (let i = 0; i < dates.length; i++) {
       const date = dates[i];
@@ -245,43 +384,31 @@ async function handleAttendance(searchParams: URLSearchParams) {
       if (isWeekendFromDate(date)) {
         status = "L";
       } else {
-        const leave = await prisma.riwayatIzinCuti.findFirst({
-          where: { employeePin: emp.pin, status: "approved", startDate: { lte: date }, endDate: { gte: date } },
-        });
+        const leave = empLeaves.find((l) => l.startDate <= date && l.endDate >= date);
         if (leave) {
-          const master = await prisma.masterIzinCuti.findUnique({ where: { id: leave.masterIzinId } });
+          const master = masterMap.get(leave.masterIzinId);
           status = master?.statusAbsensi || "I";
         } else {
-          const scans = await prisma.attendanceLog.count({
-            where: {
-              employeePin: emp.pin,
-              scanTime: { gte: new Date(`${dateStr}T00:00:00+07:00`), lte: new Date(`${dateStr}T23:59:59+07:00`) },
-            },
-          });
-          if (scans === 0) {
+          const dayScans = scansByDate[dateStr];
+          if (!dayScans || dayScans.length === 0) {
             status = "A";
           } else {
-      const sched = await getScheduleForEmployee(emp.pin, date, date.getDay());
-            const jamKerja = sched?.jamKerjaKode ? await prisma.jamKerja.findUnique({ where: { kode: sched.jamKerjaKode } }) : null;
+            const sched = scheduleFor(emp.pin, date);
+            const jamKerja = sched?.jamKerjaKode ? jkMap.get(sched.jamKerjaKode) || null : null;
             if (jamKerja?.startTime) {
-              const firstScan = await prisma.attendanceLog.findFirst({
-                where: { employeePin: emp.pin, scanTime: { gte: new Date(`${dateStr}T00:00:00+07:00`), lte: new Date(`${dateStr}T23:59:59+07:00`) } },
-                orderBy: { scanTime: "asc" },
-              });
-              if (firstScan) {
-                const scanInMin = firstScan.scanTime.getHours() * 60 + firstScan.scanTime.getMinutes();
-                const schedMin = toMinutes(jamKerja.startTime);
-                let tolerance = 0;
-                if (jamKerja.aturanKode) {
-                  const aturan = await prisma.aturan.findUnique({ where: { kode: jamKerja.aturanKode } });
-                  tolerance = aturan?.toleransiTerlambat || 0;
-                }
-                const diff = scanInMin - schedMin;
-                if (diff > tolerance) {
-                  status = "TL";
-                  lateM = diff;
-                  note = `+${diff}mnt`;
-                }
+              const firstScan = dayScans[0].scanTime;
+              const scanInMin = firstScan.getHours() * 60 + firstScan.getMinutes();
+              const schedMin = toMinutes(jamKerja.startTime);
+              let tolerance = 0;
+              if (jamKerja.aturanKode) {
+                const aturan = aturanMap.get(jamKerja.aturanKode);
+                tolerance = aturan?.toleransiTerlambat || 0;
+              }
+              const diff = scanInMin - schedMin;
+              if (diff > tolerance) {
+                status = "TL";
+                lateM = diff;
+                note = `+${diff}mnt`;
               }
             }
           }
@@ -294,6 +421,8 @@ async function handleAttendance(searchParams: URLSearchParams) {
     report.push({
       pin: emp.pin,
       name: emp.name,
+      kantor: (emp as any).kantor?.nama || "",
+      jabatan: (emp as any).jabatan?.nama || "",
       days,
       totals: { ...totals, total: dates.length },
     });

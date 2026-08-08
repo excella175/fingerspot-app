@@ -14,7 +14,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { DateRangePicker, getDateRange } from "@/components/date-range-picker";
 
 interface DayEntry {
@@ -37,6 +36,8 @@ interface EmployeeTotals {
 interface EmployeeReport {
   pin: string;
   name: string;
+  kantor: string;
+  jabatan: string;
   days: DayEntry[];
   totals: EmployeeTotals;
 }
@@ -44,6 +45,12 @@ interface EmployeeReport {
 interface ReportResponse {
   success: boolean;
   report: EmployeeReport[];
+}
+
+interface Kantor {
+  id: string;
+  nama: string;
+  jabatans: { id: string; nama: string }[];
 }
 
 const STATUS_BADGE_VARIANT: Record<string, string> = {
@@ -78,27 +85,49 @@ function getDaysInRange(from: string, to: string): number[] {
   return days;
 }
 
+const inputCls =
+  "flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+
 export default function AttendanceReportPage() {
   const [data, setData] = useState<ReportResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [employeeSearch, setEmployeeSearch] = useState("");
   const [generating, setGenerating] = useState(false);
 
-  const dr = getDateRange();
+  // Filters
+  const [pin, setPin] = useState("");
+  const [name, setName] = useState("");
+  const [kantorId, setKantorId] = useState("");
+  const [jabatanId, setJabatanId] = useState("");
+  const [kantors, setKantors] = useState<Kantor[]>([]);
 
+  const dr = getDateRange();
   const daysArray = useMemo(() => getDaysInRange(dr.from, dr.to), [dr.from, dr.to]);
+
+  useEffect(() => {
+    fetch("/api/kantor")
+      .then((r) => r.json())
+      .then((d) => setKantors(d.data || []))
+      .catch(() => {});
+  }, []);
+
+  const selectedKantor = kantors.find((k) => k.id === kantorId);
 
   const fetchReport = useCallback(() => {
     setLoading(true);
     const d = getDateRange();
-    fetch(`/api/reports?command=attendance&from=${d.from}&to=${d.to}`)
+    const params = new URLSearchParams({ command: "attendance", from: d.from, to: d.to });
+    if (pin) params.set("pin", pin);
+    if (name) params.set("name", name);
+    if (kantorId) params.set("kantorId", kantorId);
+    if (jabatanId) params.set("jabatanId", jabatanId);
+    fetch(`/api/reports?${params}`)
       .then((res) => res.json())
       .then((d2: ReportResponse) => {
         setData(d2);
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, []);
+  }, [pin, name, kantorId, jabatanId]);
 
   useEffect(() => {
     fetchReport();
@@ -111,16 +140,6 @@ export default function AttendanceReportPage() {
   }, [fetchReport]);
 
   const reportData = data?.report || [];
-
-  const filteredData = useMemo(() => {
-    if (!employeeSearch.trim()) return reportData;
-    const q = employeeSearch.toLowerCase();
-    return reportData.filter(
-      (e) =>
-        e.name.toLowerCase().includes(q) ||
-        e.pin.toLowerCase().includes(q)
-    );
-  }, [reportData, employeeSearch]);
 
   function getStatus(report: EmployeeReport, day: number): string | null {
     const entry = report.days.find((d) => d.day === day);
@@ -154,7 +173,10 @@ export default function AttendanceReportPage() {
   const exportExcel = () => {
     const header = [
       "No",
+      "ID",
       "Nama Karyawan",
+      "Kantor",
+      "Jabatan",
       ...daysArray.map(String),
       "H",
       "A",
@@ -164,9 +186,12 @@ export default function AttendanceReportPage() {
       "TL",
       "Total Hari",
     ];
-    const rows = filteredData.map((emp, idx) => [
+    const rows = reportData.map((emp, idx) => [
       idx + 1,
+      emp.pin,
       emp.name,
+      emp.kantor || "-",
+      emp.jabatan || "-",
       ...daysArray.map((d) => getStatus(emp, d) || ""),
       emp.totals.H,
       emp.totals.A,
@@ -179,21 +204,24 @@ export default function AttendanceReportPage() {
     const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Laporan");
-    const dr = getDateRange();
-    XLSX.writeFile(wb, `Laporan_Kehadiran_${dr.from}_${dr.to}.xlsx`);
+    const d = getDateRange();
+    XLSX.writeFile(wb, `Laporan_Kehadiran_${d.from}_${d.to}.xlsx`);
   };
 
   const exportPDF = () => {
     const doc = new jsPDF("landscape", "mm", "a4");
     const pageWidth = doc.internal.pageSize.getWidth();
     doc.setFontSize(14);
-    const dr = getDateRange();
-    doc.text(`Laporan Kehadiran - ${dr.from} sd ${dr.to}`, pageWidth / 2, 15, {
+    const d = getDateRange();
+    doc.text(`Laporan Kehadiran - ${d.from} sd ${d.to}`, pageWidth / 2, 15, {
       align: "center",
     });
     const header = [
       "No",
+      "ID",
       "Nama Karyawan",
+      "Kantor",
+      "Jabatan",
       ...daysArray.map(String),
       "H",
       "A",
@@ -203,9 +231,12 @@ export default function AttendanceReportPage() {
       "TL",
       "Total",
     ];
-    const body = filteredData.map((emp, idx) => [
+    const body = reportData.map((emp, idx) => [
       idx + 1,
+      emp.pin,
       emp.name,
+      emp.kantor || "-",
+      emp.jabatan || "-",
       ...daysArray.map((d) => getStatus(emp, d) || "-"),
       emp.totals.H,
       emp.totals.A,
@@ -223,14 +254,14 @@ export default function AttendanceReportPage() {
       headStyles: { fillColor: [59, 130, 246], fontSize: 6 },
       tableWidth: "auto",
     });
-    doc.save(`Laporan_Kehadiran_${dr.from}_${dr.to}.pdf`);
+    doc.save(`Laporan_Kehadiran_${d.from}_${d.to}.pdf`);
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50">
-          <CalendarCheck className="h-5 w-5 text-violet-600" />
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-sm shadow-violet-200">
+          <CalendarCheck className="h-5 w-5 text-white" />
         </div>
         <div>
           <h1 className="text-xl font-bold text-gray-900">
@@ -247,24 +278,69 @@ export default function AttendanceReportPage() {
           <div className="flex flex-wrap items-end gap-3">
             <DateRangePicker />
 
-            <div className="flex-1 min-w-[180px] max-w-[280px]">
+            <div className="w-32">
               <label className="block text-[13px] font-medium text-gray-500 mb-1.5">
-                Cari Karyawan
+                ID (PIN)
               </label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  type="text"
-                  value={employeeSearch}
-                  onChange={(e) => setEmployeeSearch(e.target.value)}
-                  placeholder="Nama atau PIN..."
-                  className="pl-9"
-                />
-              </div>
+              <input
+                type="text"
+                value={pin}
+                onChange={(e) => setPin(e.target.value)}
+                placeholder="Semua"
+                className={inputCls}
+              />
+            </div>
+            <div className="w-44">
+              <label className="block text-[13px] font-medium text-gray-500 mb-1.5">
+                Nama
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Cari nama..."
+                className={inputCls}
+              />
+            </div>
+            <div className="w-44">
+              <label className="block text-[13px] font-medium text-gray-500 mb-1.5">
+                Kantor
+              </label>
+              <select
+                value={kantorId}
+                onChange={(e) => { setKantorId(e.target.value); setJabatanId(""); }}
+                className={inputCls}
+              >
+                <option value="">Semua Kantor</option>
+                {kantors.map((k) => (
+                  <option key={k.id} value={k.id}>{k.nama}</option>
+                ))}
+              </select>
+            </div>
+            <div className="w-44">
+              <label className="block text-[13px] font-medium text-gray-500 mb-1.5">
+                Jabatan
+              </label>
+              <select
+                value={jabatanId}
+                onChange={(e) => setJabatanId(e.target.value)}
+                disabled={!kantorId}
+                className={inputCls + " disabled:opacity-50"}
+              >
+                <option value="">{kantorId ? "Semua Jabatan" : "Pilih Kantor dulu"}</option>
+                {selectedKantor?.jabatans.map((j) => (
+                  <option key={j.id} value={j.id}>{j.nama}</option>
+                ))}
+              </select>
             </div>
 
             <div className="flex items-center gap-2 pb-0.5">
+              <Button onClick={fetchReport} disabled={loading}>
+                <Search className={`h-4 w-4 mr-1.5 ${loading ? "animate-spin" : ""}`} />
+                {loading ? "Memuat..." : "Tampilkan"}
+              </Button>
               <Button
+                variant="secondary"
                 onClick={async () => {
                   setGenerating(true);
                   try {
@@ -307,7 +383,9 @@ export default function AttendanceReportPage() {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-10 text-center">No</TableHead>
-                <TableHead className="min-w-[160px]">Nama Karyawan</TableHead>
+                <TableHead className="min-w-[140px]">Nama Karyawan</TableHead>
+                <TableHead className="min-w-[110px]">Kantor</TableHead>
+                <TableHead className="min-w-[100px]">Jabatan</TableHead>
                 {daysArray.map((d) => (
                   <TableHead key={d} className="text-center text-[11px] w-8 px-1.5">
                     {d}
@@ -340,7 +418,7 @@ export default function AttendanceReportPage() {
               {loading ? (
                 <TableRow>
                   <TableCell
-                    colSpan={daysArray.length + 9}
+                    colSpan={daysArray.length + 11}
                     className="h-32 text-center text-muted-foreground"
                   >
                     <div className="flex items-center justify-center gap-2">
@@ -349,19 +427,19 @@ export default function AttendanceReportPage() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ) : filteredData.length === 0 ? (
+              ) : reportData.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={daysArray.length + 9}
+                    colSpan={daysArray.length + 11}
                     className="h-32 text-center text-muted-foreground"
                   >
-                    {employeeSearch
-                      ? "Tidak ada karyawan yang cocok dengan pencarian."
-                      : "Belum ada data laporan untuk bulan ini."}
+                    {pin || name || kantorId || jabatanId
+                      ? "Tidak ada karyawan yang cocok dengan filter."
+                      : "Belum ada data laporan untuk periode ini."}
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredData.map((emp, idx) => (
+                reportData.map((emp, idx) => (
                   <TableRow key={emp.pin}>
                     <TableCell className="text-center text-muted-foreground text-[12px]">
                       {idx + 1}
@@ -371,6 +449,24 @@ export default function AttendanceReportPage() {
                         {emp.pin}
                       </span>
                       {emp.name}
+                    </TableCell>
+                    <TableCell className="text-[12px]">
+                      {emp.kantor ? (
+                        <span className="rounded-md bg-indigo-50 px-1.5 py-0.5 text-[11px] font-medium text-indigo-700">
+                          {emp.kantor}
+                        </span>
+                      ) : (
+                        <span className="text-gray-300">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-[12px]">
+                      {emp.jabatan ? (
+                        <span className="rounded-md bg-blue-50 px-1.5 py-0.5 text-[11px] font-medium text-blue-700">
+                          {emp.jabatan}
+                        </span>
+                      ) : (
+                        <span className="text-gray-300">-</span>
+                      )}
                     </TableCell>
                     {daysArray.map((d) => (
                       <TableCell key={d} className="text-center px-1.5">
