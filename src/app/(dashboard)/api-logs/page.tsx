@@ -61,8 +61,6 @@ export default function ApiLogsPage() {
       reg_online: "Register Online",
       restart_device: "Restart Mesin",
       get_device: "Get Device",
-      set_qrcode: "Set QR Code",
-      get_qrcode: "Get QR Code",
     };
     return labels[cmd] || cmd;
   };
@@ -113,8 +111,6 @@ export default function ApiLogsPage() {
               <option value="reg_online">Register Online</option>
               <option value="restart_device">Restart Mesin</option>
               <option value="get_device">Get Device</option>
-              <option value="set_qrcode">Set QR Code</option>
-              <option value="get_qrcode">Get QR Code</option>
             </select>
           </div>
           <button

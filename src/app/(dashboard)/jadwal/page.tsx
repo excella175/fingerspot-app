@@ -91,9 +91,7 @@ export default function JadwalPage() {
       for (let d = 1; d <= daysInMonth; d++) {
         const dateStr = `${manualYear}-${String(manualMonth).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
         const schedule = getScheduleForDate(user.pin, dateStr);
-        if (schedule.source !== "none") {
-          rows.push({ pin: user.pin, name: user.name, date: dateStr, day: d, schedule });
-        }
+        rows.push({ pin: user.pin, name: user.name, date: dateStr, day: d, schedule });
       }
     }
     return rows;
@@ -186,7 +184,7 @@ export default function JadwalPage() {
       "Jam Kerja": getJKName(m.schedule.jamKerjaKode),
       "Jam Mulai": m.schedule.startTime || "",
       "Jam Selesai": m.schedule.endTime || "",
-      Sumber: m.schedule.source,
+      Sumber: m.schedule.source === "manual" ? "Manual" : m.schedule.source === "auto" ? "Auto" : "",
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
@@ -358,8 +356,8 @@ export default function JadwalPage() {
           ) : manualView.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center text-gray-300">
-                <p>Tidak ada jadwal untuk bulan ini.</p>
-                <p className="text-xs mt-1">Buat jadwal Auto terlebih dahulu atau tambah jadwal Manual.</p>
+                <p>Tidak ada karyawan untuk bulan ini.</p>
+                <p className="text-xs mt-1">Tambahkan karyawan atau buat jadwal Auto terlebih dahulu.</p>
               </CardContent>
             </Card>
           ) : (
@@ -385,13 +383,17 @@ export default function JadwalPage() {
                         <TableCell className="font-medium text-gray-900">{row.name}</TableCell>
                         <TableCell className="font-mono text-gray-700">{row.date}</TableCell>
                         <TableCell className="text-gray-500">{DAYS_FULL[new Date(row.date).getDay()]}</TableCell>
-                        <TableCell className="text-gray-700">{getJKName(row.schedule.jamKerjaKode)}</TableCell>
-                        <TableCell className="font-mono text-gray-700">{row.schedule.startTime || getJK(row.schedule.jamKerjaKode)?.startTime || "-"}</TableCell>
-                        <TableCell className="font-mono text-gray-700">{row.schedule.endTime || getJK(row.schedule.jamKerjaKode)?.endTime || "-"}</TableCell>
+                        <TableCell className="text-gray-700">{row.schedule.jamKerjaKode ? getJKName(row.schedule.jamKerjaKode) : "-"}</TableCell>
+                        <TableCell className="font-mono text-gray-700">{row.schedule.startTime || (row.schedule.jamKerjaKode ? getJK(row.schedule.jamKerjaKode)?.startTime || "-" : "-")}</TableCell>
+                        <TableCell className="font-mono text-gray-700">{row.schedule.endTime || (row.schedule.jamKerjaKode ? getJK(row.schedule.jamKerjaKode)?.endTime || "-" : "-")}</TableCell>
                         <TableCell>
-                          <Badge variant={row.schedule.source === "manual" ? "default" : "secondary"} className={row.schedule.source === "manual" ? "bg-blue-100 text-blue-700 hover:bg-blue-100" : "bg-gray-100 text-gray-600 hover:bg-gray-100"}>
-                            {row.schedule.source === "manual" ? "MANUAL" : "AUTO"}
-                          </Badge>
+                          {row.schedule.source === "manual" ? (
+                            <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">MANUAL</Badge>
+                          ) : row.schedule.source === "auto" ? (
+                            <Badge variant="secondary" className="bg-gray-100 text-gray-600 hover:bg-gray-100">AUTO</Badge>
+                          ) : (
+                            <span className="text-gray-300">-</span>
+                          )}
                         </TableCell>
                         <TableCell className="text-center">
                           <div className="flex items-center justify-center gap-1">

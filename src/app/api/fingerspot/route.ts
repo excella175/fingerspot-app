@@ -105,14 +105,6 @@ export async function POST(request: NextRequest) {
         result = await fingerspot.restartDevice(params.transId, String(targetCloudId));
         break;
 
-      case "set_qrcode":
-        result = await fingerspot.setQrCode(params.pin, params.qrString, String(targetCloudId));
-        break;
-
-      case "get_qrcode":
-        result = await fingerspot.getQrCode(params.pin, String(targetCloudId));
-        break;
-
       case "set_userinfo":
         result = await fingerspot.setUserInfo(params, String(targetCloudId));
         break;

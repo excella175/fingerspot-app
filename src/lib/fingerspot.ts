@@ -135,24 +135,3 @@ export async function restartDevice(transId?: string, cloudId?: string) {
     trans_id: transId || Date.now().toString(),
   }, cloudId);
 }
-
-// ============================================
-// QR CODE (VIDA Series)
-// ============================================
-
-export async function setQrCode(pin: string, qrString: string, cloudId?: string) {
-  return callAPI("set_qrcode", {
-    trans_id: Date.now().toString(),
-    data: {
-      pin,
-      qr_string: qrString,
-    },
-  }, cloudId);
-}
-
-export async function getQrCode(pin: string, cloudId?: string) {
-  return callAPI("get_qrcode", {
-    trans_id: Date.now().toString(),
-    pin,
-  }, cloudId);
-}

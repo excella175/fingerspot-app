@@ -276,8 +276,6 @@ export default function AttendanceReportPage() {
       <Card>
         <CardContent className="p-5">
           <div className="flex flex-wrap items-end gap-3">
-            <DateRangePicker />
-
             <div className="w-32">
               <label className="block text-[13px] font-medium text-gray-500 mb-1.5">
                 ID (PIN)
@@ -333,6 +331,8 @@ export default function AttendanceReportPage() {
                 ))}
               </select>
             </div>
+
+            <DateRangePicker />
 
             <div className="flex items-center gap-2 pb-0.5">
               <Button onClick={fetchReport} disabled={loading}>

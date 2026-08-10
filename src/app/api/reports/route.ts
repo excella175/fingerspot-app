@@ -58,6 +58,10 @@ function minutesToStr(m: number): string {
   return `${m < 0 ? "-" : ""}${h}h ${min}m`;
 }
 
+function localMin(d: Date): number {
+  return d.getHours() * 60 + d.getMinutes();
+}
+
 function employeeWhere(searchParams: URLSearchParams) {
   const where: any = {};
   const pin = searchParams.get("employeePin") || searchParams.get("pin") || "";
@@ -207,12 +211,12 @@ async function handleDetail(searchParams: URLSearchParams) {
       if (leave) {
         const master = masterMap.get(leave.masterIzinId);
         const statusCode = master?.statusAbsensi || "I";
-        result.push({ employeePin: emp.pin, employeeName: empName, employeeKantor: empKantor, employeeJabatan: empJabatan, date: dateStr, dayName: dayNameFromDate(date), status: statusCode, scanIn: null, scanOut: null, scheduledStart: null, scheduledEnd: null, lateMinutes: null, earlyLeaveMinutes: null, overtimeMinutes: null, note: master?.nama || "Izin" });
+        result.push({ employeePin: emp.pin, employeeName: empName, employeeKantor: empKantor, employeeJabatan: empJabatan, date: dateStr, dayName: dayNameFromDate(date), status: statusCode, scanIn: null, scanOut: null, scheduledStart: null, scheduledEnd: null, lateMinutes: null, earlyLeaveMinutes: null, overtimeMinutes: null, workDurationMinutes: null, istirahatMinutes: null, overtimeStartMinutes: null, overtimeEndMinutes: null, note: master?.nama || "Izin" });
         continue;
       }
 
       if (isWeekendFromDate(date)) {
-        result.push({ employeePin: emp.pin, employeeName: empName, employeeKantor: empKantor, employeeJabatan: empJabatan, date: dateStr, dayName: dayNameFromDate(date), status: "L", scanIn: null, scanOut: null, scheduledStart: null, scheduledEnd: null, lateMinutes: null, earlyLeaveMinutes: null, overtimeMinutes: null, note: "Libur" });
+        result.push({ employeePin: emp.pin, employeeName: empName, employeeKantor: empKantor, employeeJabatan: empJabatan, date: dateStr, dayName: dayNameFromDate(date), status: "L", scanIn: null, scanOut: null, scheduledStart: null, scheduledEnd: null, lateMinutes: null, earlyLeaveMinutes: null, overtimeMinutes: null, workDurationMinutes: null, istirahatMinutes: null, overtimeStartMinutes: null, overtimeEndMinutes: null, note: "Libur" });
         continue;
       }
 
@@ -226,7 +230,7 @@ async function handleDetail(searchParams: URLSearchParams) {
       const dayScans = scansByDate[dateStr];
 
       if (!dayScans || dayScans.length === 0) {
-        result.push({ employeePin: emp.pin, employeeName: empName, employeeKantor: empKantor, employeeJabatan: empJabatan, date: dateStr, dayName: dayNameFromDate(date), status: "A", scanIn: null, scanOut: null, scheduledStart, scheduledEnd, lateMinutes: null, earlyLeaveMinutes: null, overtimeMinutes: null, note: "Alpha" });
+        result.push({ employeePin: emp.pin, employeeName: empName, employeeKantor: empKantor, employeeJabatan: empJabatan, date: dateStr, dayName: dayNameFromDate(date), status: "A", scanIn: null, scanOut: null, scheduledStart, scheduledEnd, lateMinutes: null, earlyLeaveMinutes: null, overtimeMinutes: null, workDurationMinutes: null, istirahatMinutes: null, overtimeStartMinutes: null, overtimeEndMinutes: null, note: "Alpha" });
         continue;
       }
 
@@ -275,16 +279,26 @@ async function handleDetail(searchParams: URLSearchParams) {
           if (status === "H") { status = "PL"; note = `Pulang Cepat ${minutesToStr(diffEarly)}`; }
           else note += `, Pulang Cepat ${minutesToStr(diffEarly)}`;
         }
+      }
 
-        // Overtime
-        if (jamKerja?.lemburAktif) {
-          const scanOutMin = scanOutLocalMin;
-          const overtime = scanOutMin - schedEndMin;
-          if (overtime > 0) {
-            overtimeMinutes = overtime;
-            note += `${note ? ", " : ""}Lembur ${minutesToStr(overtime)}`;
-          }
-        }
+      const schedStartMin = scheduledStart ? toMinutes(scheduledStart) : null;
+      const schedEndMin = scheduledEnd ? toMinutes(scheduledEnd) : null;
+      const workDurationMinutes = schedStartMin != null && schedEndMin != null ? Math.max(0, schedEndMin - schedStartMin) : null;
+      let istirahatMinutes = 0;
+      if (jamKerja?.istirahatAktif && jamKerja.istirahatStart && jamKerja.istirahatEnd) {
+        istirahatMinutes = Math.max(0, toMinutes(jamKerja.istirahatEnd) - toMinutes(jamKerja.istirahatStart));
+      }
+
+      // Overtime (split awal/akhir)
+      let overtimeStartMinutes = 0;
+      let overtimeEndMinutes = 0;
+      if (jamKerja?.lemburAktif) {
+        const scanInMin = localMin(firstScan);
+        const scanOutMin = localMin(lastScan);
+        if (schedStartMin != null && scanInMin < schedStartMin) overtimeStartMinutes = schedStartMin - scanInMin;
+        if (schedEndMin != null && scanOutMin > schedEndMin) overtimeEndMinutes = scanOutMin - schedEndMin;
+        overtimeMinutes = overtimeStartMinutes + overtimeEndMinutes;
+        if (overtimeMinutes > 0) note += `${note ? ", " : ""}Lembur ${minutesToStr(overtimeMinutes)}`;
       }
 
       result.push({
@@ -302,6 +316,10 @@ async function handleDetail(searchParams: URLSearchParams) {
         lateMinutes,
         earlyLeaveMinutes,
         overtimeMinutes,
+        workDurationMinutes,
+        istirahatMinutes,
+        overtimeStartMinutes,
+        overtimeEndMinutes,
         note,
       });
     }

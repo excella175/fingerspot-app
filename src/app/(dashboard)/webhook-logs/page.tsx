@@ -57,8 +57,6 @@ export default function WebhookLogsPage() {
       set_time: "Set Time",
       reg_online: "Register Online",
       restart_device: "Restart Device",
-      set_qrcode: "Set QR Code",
-      get_qrcode: "Get QR Code",
     };
     return labels[type] || type;
   };
@@ -76,9 +74,6 @@ export default function WebhookLogsPage() {
         return "bg-cyan-50 text-cyan-700 border-cyan-200";
       case "restart_device":
         return "bg-rose-50 text-rose-700 border-rose-200";
-      case "set_qrcode":
-      case "get_qrcode":
-        return "bg-amber-50 text-amber-700 border-amber-200";
       default:
         return "bg-gray-50 text-gray-700 border-gray-200";
     }
@@ -116,8 +111,6 @@ export default function WebhookLogsPage() {
               <option value="set_time">Set Time</option>
               <option value="reg_online">Register Online</option>
               <option value="restart_device">Restart Device</option>
-              <option value="set_qrcode">Set QR Code</option>
-              <option value="get_qrcode">Get QR Code</option>
             </select>
           </div>
           <button

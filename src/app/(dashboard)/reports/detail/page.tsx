@@ -26,6 +26,11 @@ interface ReportEntry {
   lateMinutes: number;
   earlyLeaveMinutes: number;
   overtimeMinutes: number;
+  workDurationMinutes: number | null;
+  istirahatMinutes: number | null;
+  overtimeStartMinutes: number | null;
+  overtimeEndMinutes: number | null;
+  note: string;
 }
 
 interface ReportResponse {
@@ -37,6 +42,14 @@ interface Kantor {
   id: string;
   nama: string;
   jabatans: { id: string; nama: string }[];
+}
+
+interface EmployeeBlock {
+  pin: string;
+  name: string;
+  kantor: string;
+  jabatan: string;
+  rows: ReportEntry[];
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -69,11 +82,39 @@ const STATUS_BADGE_CLASS: Record<string, string> = {
   TL: "bg-orange-100 text-orange-800 hover:bg-orange-100 border-orange-300",
 };
 
-function formatTime(val: string | null) {
-  if (!val) return "-";
-  const parts = val.split(":");
-  if (parts.length >= 2) return `${parts[0]}:${parts[1]}`;
-  return val;
+function hm(min: number | null | undefined): string {
+  if (min == null) return "-";
+  return `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+}
+
+function jm(min: number | null | undefined): string {
+  const m = min ?? 0;
+  return `${Math.floor(m / 60)}j ${m % 60}m`;
+}
+
+function isoToHm(iso: string | null): string {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+function isHadir(status: string) {
+  return status === "H" || status === "TL" || status === "PL";
+}
+
+function blockTotals(rows: ReportEntry[]) {
+  const t = { terlambat: 0, cepat: 0, kerja: 0, istirahat: 0, lemburAwal: 0, lemburAkhir: 0, lemburTotal: 0, hadir: 0 };
+  for (const r of rows) {
+    t.terlambat += r.lateMinutes ?? 0;
+    t.cepat += r.earlyLeaveMinutes ?? 0;
+    t.kerja += r.workDurationMinutes ?? 0;
+    t.istirahat += r.istirahatMinutes ?? 0;
+    t.lemburAwal += r.overtimeStartMinutes ?? 0;
+    t.lemburAkhir += r.overtimeEndMinutes ?? 0;
+    t.lemburTotal += r.overtimeMinutes ?? 0;
+    if (isHadir(r.status)) t.hadir++;
+  }
+  return t;
 }
 
 export default function ReportDetailPage() {
@@ -133,6 +174,18 @@ export default function ReportDetailPage() {
     return () => window.removeEventListener("popstate", handler);
   }, [fetchReport]);
 
+  const blocks: EmployeeBlock[] = [];
+  const blockMap = new Map<string, EmployeeBlock>();
+  for (const r of report) {
+    let b = blockMap.get(r.employeePin);
+    if (!b) {
+      b = { pin: r.employeePin, name: r.employeeName, kantor: r.employeeKantor || "", jabatan: r.employeeJabatan || "", rows: [] };
+      blockMap.set(r.employeePin, b);
+      blocks.push(b);
+    }
+    b.rows.push(r);
+  }
+
   const summary = report.reduce(
     (acc, r) => {
       acc.total++;
@@ -153,33 +206,70 @@ export default function ReportDetailPage() {
   const handleExportExcel = () => {
     setExporting("excel");
     try {
-      const rows = report.map((r) => ({
-        ID: r.employeePin,
-        Nama: r.employeeName,
-        Kantor: r.employeeKantor || "-",
-        Jabatan: r.employeeJabatan || "-",
-        Tanggal: r.date,
-        Hari: r.dayName,
-        "Jadwal Masuk": formatTime(r.scheduledStart),
-        "Jadwal Pulang": formatTime(r.scheduledEnd),
-        "Scan Masuk": formatTime(r.scanIn),
-        "Scan Pulang": formatTime(r.scanOut),
-        Status: STATUS_LABELS[r.status] || r.status,
-        "Telat (menit)": r.lateMinutes,
-        "Pulang Cepat": r.earlyLeaveMinutes,
-        Lembur: r.overtimeMinutes,
-      }));
+      const dr = getDateRange();
+      const aoa: any[][] = [];
+      const merges: any[] = [];
 
-      const ws = XLSX.utils.json_to_sheet(rows);
+      blocks.forEach((b) => {
+        const base = aoa.length;
+        aoa.push(["Laporan Fingerspot Solo"]);
+        merges.push({ s: { r: base + 0, c: 0 }, e: { r: base + 0, c: 12 } });
+        aoa.push([`${dr.from} s/d ${dr.to}`]);
+        merges.push({ s: { r: base + 1, c: 0 }, e: { r: base + 1, c: 12 } });
+        aoa.push([]);
+        aoa.push([]);
+        aoa.push(["Nama Karyawan", b.name, "", "", "", "", "", "", "Jabatan", b.jabatan]);
+        aoa.push(["ID/NIK", b.pin, "", "", "", "", "", "", "Kantor", b.kantor]);
+        aoa.push([]);
+        aoa.push([]);
+        aoa.push(["Tanggal", "Jam Kerja", "", "", "Kehadiran", "", "Terlambat", "Pulang Cepat", "Total Jam Kerja", "Istirahat", "Lembur Awal", "Lembur Akhir", "Total Lembur", "Masuk Kerja", "Keterangan"]);
+        aoa.push(["", "Masuk", "Pulang", "Durasi", "Jam Masuk", "Jam Pulang", "", "", "", "", "", "", "", "", ""]);
+        merges.push({ s: { r: base + 8, c: 0 }, e: { r: base + 9, c: 0 } });
+        merges.push({ s: { r: base + 8, c: 1 }, e: { r: base + 8, c: 3 } });
+        merges.push({ s: { r: base + 8, c: 4 }, e: { r: base + 8, c: 5 } });
+        for (let c = 6; c <= 14; c++) merges.push({ s: { r: base + 8, c }, e: { r: base + 9, c } });
+
+        for (const r of b.rows) {
+          aoa.push([
+            `${r.dayName}, ${r.date}`,
+            r.scheduledStart || "-",
+            r.scheduledEnd || "-",
+            hm(r.workDurationMinutes),
+            isoToHm(r.scanIn),
+            isoToHm(r.scanOut),
+            r.lateMinutes != null ? hm(r.lateMinutes) : "-",
+            r.earlyLeaveMinutes != null ? hm(r.earlyLeaveMinutes) : "-",
+            hm(r.workDurationMinutes),
+            hm(r.istirahatMinutes),
+            r.overtimeStartMinutes != null ? hm(r.overtimeStartMinutes) : "-",
+            r.overtimeEndMinutes != null ? hm(r.overtimeEndMinutes) : "-",
+            r.overtimeMinutes != null ? hm(r.overtimeMinutes) : "-",
+            isHadir(r.status) ? 1 : 0,
+            r.note || "-",
+          ]);
+        }
+
+        const t = blockTotals(b.rows);
+        aoa.push(["TOTAL", "", "", "", "", "", jm(t.terlambat), jm(t.cepat), jm(t.kerja), jm(t.istirahat), jm(t.lemburAwal), jm(t.lemburAkhir), jm(t.lemburTotal), `${t.hadir} hari`, ""]);
+        merges.push({ s: { r: base + 41, c: 0 }, e: { r: base + 41, c: 5 } });
+        aoa.push([]);
+      });
+
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws["!merges"] = merges;
+      ws["!cols"] = [
+        { wch: 20 }, { wch: 22 }, { wch: 8 }, { wch: 8 }, { wch: 10 }, { wch: 10 },
+        { wch: 11 }, { wch: 12 }, { wch: 15 }, { wch: 10 }, { wch: 11 }, { wch: 11 },
+        { wch: 11 }, { wch: 11 }, { wch: 22 },
+      ];
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Detail");
+      XLSX.utils.book_append_sheet(wb, ws, "Laporan Detail Kehadiran");
       const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
       const blob = new Blob([wbout], { type: "application/octet-stream" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      const dl = getDateRange();
-      a.download = `laporan-detail_${dl.from}_${dl.to}.xlsx`;
+      a.download = `laporan-detail_${dr.from}_${dr.to}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
     } catch {
@@ -191,59 +281,56 @@ export default function ReportDetailPage() {
   const handleExportPdf = () => {
     setExporting("pdf");
     try {
+      const dr = getDateRange();
       const doc = new jsPDF({ orientation: "landscape" });
-      const dl3 = getDateRange();
-      const title = `Laporan Detail ${dl3.from} sd ${dl3.to}`;
-      doc.setFontSize(14);
-      doc.text(title, 14, 16);
-      doc.setFontSize(8);
-      doc.text(`Diexport: ${new Date().toLocaleDateString("id-ID")}`, 14, 22);
 
-      const headers = [
-        [
-          "ID",
-          "Nama",
-          "Kantor",
-          "Jabatan",
-          "Tanggal",
-          "Hari",
-          "Jadwal Masuk",
-          "Jadwal Pulang",
-          "Scan Masuk",
-          "Scan Pulang",
-          "Status",
-          "Telat",
-          "Pulang Cepat",
-          "Lembur",
-        ],
+      const head = [
+        ["Tanggal", "Jam Kerja", "", "", "Kehadiran", "", "Terlambat", "Pulang Cepat", "Total Jam Kerja", "Istirahat", "Lembur Awal", "Lembur Akhir", "Total Lembur", "Masuk Kerja", "Keterangan"],
+        ["", "Masuk", "Pulang", "Durasi", "Jam Masuk", "Jam Pulang", "", "", "", "", "", "", "", "", ""],
       ];
-      const body = report.map((r) => [
-        r.employeePin,
-        r.employeeName,
-        r.employeeKantor || "-",
-        r.employeeJabatan || "-",
-        r.date,
-        r.dayName,
-        formatTime(r.scheduledStart),
-        formatTime(r.scheduledEnd),
-        formatTime(r.scanIn),
-        formatTime(r.scanOut),
-        STATUS_LABELS[r.status] || r.status,
-        r.lateMinutes,
-        r.earlyLeaveMinutes,
-        r.overtimeMinutes,
-      ]);
 
-      (doc as any).autoTable({
-        head: headers,
-        body,
-        startY: 28,
-        styles: { fontSize: 7 },
-        headStyles: { fillColor: [59, 130, 246] },
+      blocks.forEach((b, bi) => {
+        if (bi > 0) doc.addPage();
+        doc.setFontSize(14);
+        doc.text("Laporan Fingerspot Solo", 14, 14);
+        doc.setFontSize(10);
+        doc.text(`${dr.from} s/d ${dr.to}`, 14, 20);
+        doc.setFontSize(9);
+        doc.text(`Nama: ${b.name}    ID/NIK: ${b.pin}    Jabatan: ${b.jabatan || "-"}    Kantor: ${b.kantor || "-"}`, 14, 26);
+
+        const body = b.rows.map((r) => [
+          `${r.dayName}, ${r.date}`,
+          r.scheduledStart || "-",
+          r.scheduledEnd || "-",
+          hm(r.workDurationMinutes),
+          isoToHm(r.scanIn),
+          isoToHm(r.scanOut),
+          r.lateMinutes != null ? hm(r.lateMinutes) : "-",
+          r.earlyLeaveMinutes != null ? hm(r.earlyLeaveMinutes) : "-",
+          hm(r.workDurationMinutes),
+          hm(r.istirahatMinutes),
+          r.overtimeStartMinutes != null ? hm(r.overtimeStartMinutes) : "-",
+          r.overtimeEndMinutes != null ? hm(r.overtimeEndMinutes) : "-",
+          r.overtimeMinutes != null ? hm(r.overtimeMinutes) : "-",
+          isHadir(r.status) ? "1" : "0",
+          r.note || "-",
+        ]);
+
+        const t = blockTotals(b.rows);
+        body.push(["TOTAL", "", "", "", "", "", jm(t.terlambat), jm(t.cepat), jm(t.kerja), jm(t.istirahat), jm(t.lemburAwal), jm(t.lemburAkhir), jm(t.lemburTotal), `${t.hadir} hari`, ""]);
+
+        (doc as any).autoTable({
+          head,
+          body,
+          startY: 31,
+          styles: { fontSize: 7, cellPadding: 1.2 },
+          headStyles: { fillColor: [59, 130, 246] },
+          bodyStyles: { textColor: 40 },
+          alternateRowStyles: { fillColor: [245, 247, 250] },
+        });
       });
 
-      const dl2 = getDateRange();
-      doc.save(`laporan-detail_${dl2.from}_${dl2.to}.pdf`);
+      doc.save(`laporan-detail_${dr.from}_${dr.to}.pdf`);
     } catch {
       alert("Gagal export PDF");
     }
@@ -374,107 +461,127 @@ export default function ReportDetailPage() {
         </div>
       )}
 
-      <Card>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Nama</TableHead>
-                <TableHead>Kantor</TableHead>
-                <TableHead>Jabatan</TableHead>
-                <TableHead>Tanggal</TableHead>
-                <TableHead>Hari</TableHead>
-                <TableHead>Jadwal Masuk</TableHead>
-                <TableHead>Jadwal Pulang</TableHead>
-                <TableHead>Scan Masuk</TableHead>
-                <TableHead>Scan Pulang</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Telat (menit)</TableHead>
-                <TableHead className="text-right">Pulang Cepat</TableHead>
-                <TableHead className="text-right">Lembur</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={14} className="h-32 text-center text-muted-foreground">
-                    <div className="flex items-center justify-center gap-2">
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-                      Memuat data...
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : report.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={14} className="h-32 text-center text-muted-foreground">
-                    {pin || name || kantorId || jabatanId
-                      ? "Tidak ada data untuk filter yang dipilih"
-                      : "Pilih periode dan klik Tampilkan untuk melihat laporan"}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                report.map((row, idx) => (
-                  <TableRow key={idx}>
-                    <TableCell className="font-mono">{row.employeePin}</TableCell>
-                    <TableCell className="font-medium">{row.employeeName}</TableCell>
-                    <TableCell className="text-[12.5px]">
-                      {row.employeeKantor ? (
-                        <span className="rounded-md bg-indigo-50 px-2 py-0.5 text-[11.5px] font-medium text-indigo-700">
-                          {row.employeeKantor}
-                        </span>
-                      ) : (
-                        <span className="text-gray-300">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-[12.5px]">
-                      {row.employeeJabatan ? (
-                        <span className="rounded-md bg-blue-50 px-2 py-0.5 text-[11.5px] font-medium text-blue-700">
-                          {row.employeeJabatan}
-                        </span>
-                      ) : (
-                        <span className="text-gray-300">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="font-mono">{row.date}</TableCell>
-                    <TableCell>{row.dayName}</TableCell>
-                    <TableCell className="font-mono">{formatTime(row.scheduledStart)}</TableCell>
-                    <TableCell className="font-mono">{formatTime(row.scheduledEnd)}</TableCell>
-                    <TableCell className="font-mono">{formatTime(row.scanIn)}</TableCell>
-                    <TableCell className="font-mono">{formatTime(row.scanOut)}</TableCell>
-                    <TableCell>
-                      <Badge variant={STATUS_BADGE_VARIANT[row.status] as "default" | "secondary" | "destructive" | "outline" | "ghost" | "link"} className={STATUS_BADGE_CLASS[row.status]}>
-                        {row.status} - {STATUS_LABELS[row.status] || row.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {row.lateMinutes > 0 ? (
-                        <span className="text-orange-600">{row.lateMinutes}</span>
-                      ) : (
-                        row.lateMinutes
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {row.earlyLeaveMinutes > 0 ? (
-                        <span className="text-orange-600">{row.earlyLeaveMinutes}</span>
-                      ) : (
-                        row.earlyLeaveMinutes
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {row.overtimeMinutes > 0 ? (
-                        <span className="text-emerald-600">{row.overtimeMinutes}</span>
-                      ) : (
-                        row.overtimeMinutes
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+      {blocks.length > 0 && (
+        <div className="space-y-6">
+          {blocks.map((b) => {
+            const t = blockTotals(b.rows);
+            return (
+              <Card key={b.pin}>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-2 border-b p-4 text-[13px] md:grid-cols-4">
+                  <div>
+                    <span className="text-gray-400">Nama Karyawan</span>
+                    <div className="mt-0.5 font-semibold text-gray-900">{b.name}</div>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">ID/NIK</span>
+                    <div className="mt-0.5 font-mono text-gray-900">{b.pin}</div>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">Jabatan</span>
+                    <div className="mt-0.5 font-medium text-gray-900">{b.jabatan || "-"}</div>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">Kantor</span>
+                    <div className="mt-0.5 font-medium text-gray-900">{b.kantor || "-"}</div>
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead rowSpan={2} className="whitespace-nowrap">Tanggal</TableHead>
+                        <TableHead colSpan={3} className="text-center">Jam Kerja</TableHead>
+                        <TableHead colSpan={2} className="text-center">Kehadiran</TableHead>
+                        <TableHead rowSpan={2} className="whitespace-nowrap text-center">Terlambat</TableHead>
+                        <TableHead rowSpan={2} className="whitespace-nowrap text-center">Pulang Cepat</TableHead>
+                        <TableHead rowSpan={2} className="whitespace-nowrap text-center">Total Jam Kerja</TableHead>
+                        <TableHead rowSpan={2} className="whitespace-nowrap text-center">Istirahat</TableHead>
+                        <TableHead rowSpan={2} className="whitespace-nowrap text-center">Lembur Awal</TableHead>
+                        <TableHead rowSpan={2} className="whitespace-nowrap text-center">Lembur Akhir</TableHead>
+                        <TableHead rowSpan={2} className="whitespace-nowrap text-center">Total Lembur</TableHead>
+                        <TableHead rowSpan={2} className="whitespace-nowrap text-center">Masuk Kerja</TableHead>
+                        <TableHead rowSpan={2} className="whitespace-nowrap">Keterangan</TableHead>
+                      </TableRow>
+                      <TableRow>
+                        <TableHead className="text-center">Masuk</TableHead>
+                        <TableHead className="text-center">Pulang</TableHead>
+                        <TableHead className="text-center">Durasi</TableHead>
+                        <TableHead className="text-center">Jam Masuk</TableHead>
+                        <TableHead className="text-center">Jam Pulang</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {b.rows.map((r, idx) => (
+                        <TableRow key={idx}>
+                          <TableCell className="whitespace-nowrap font-medium">
+                            {r.dayName}, <span className="font-mono">{r.date}</span>
+                          </TableCell>
+                          <TableCell className="text-center font-mono">{r.scheduledStart || "-"}</TableCell>
+                          <TableCell className="text-center font-mono">{r.scheduledEnd || "-"}</TableCell>
+                          <TableCell className="text-center font-mono">{hm(r.workDurationMinutes)}</TableCell>
+                          <TableCell className="text-center font-mono">
+                            {r.scanIn ? (
+                              <span className={r.lateMinutes > 0 ? "text-orange-600" : ""}>{isoToHm(r.scanIn)}</span>
+                            ) : (
+                              "-"
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center font-mono">
+                            {r.scanOut ? (
+                              <span className={r.earlyLeaveMinutes > 0 ? "text-orange-600" : ""}>{isoToHm(r.scanOut)}</span>
+                            ) : (
+                              "-"
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center font-mono">{r.lateMinutes != null ? hm(r.lateMinutes) : "-"}</TableCell>
+                          <TableCell className="text-center font-mono">{r.earlyLeaveMinutes != null ? hm(r.earlyLeaveMinutes) : "-"}</TableCell>
+                          <TableCell className="text-center font-mono">{hm(r.workDurationMinutes)}</TableCell>
+                          <TableCell className="text-center font-mono">{hm(r.istirahatMinutes)}</TableCell>
+                          <TableCell className="text-center font-mono">
+                            {r.overtimeStartMinutes ? <span className="text-emerald-600">{hm(r.overtimeStartMinutes)}</span> : hm(r.overtimeStartMinutes)}
+                          </TableCell>
+                          <TableCell className="text-center font-mono">
+                            {r.overtimeEndMinutes ? <span className="text-emerald-600">{hm(r.overtimeEndMinutes)}</span> : hm(r.overtimeEndMinutes)}
+                          </TableCell>
+                          <TableCell className="text-center font-mono">
+                            {r.overtimeMinutes ? <span className="text-emerald-600">{hm(r.overtimeMinutes)}</span> : hm(r.overtimeMinutes)}
+                          </TableCell>
+                          <TableCell className="text-center font-mono">{isHadir(r.status) ? "1" : "0"}</TableCell>
+                          <TableCell className="max-w-[220px] text-[12.5px] text-gray-600">
+                            {r.note || "-"}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      <TableRow className="bg-blue-50/60">
+                        <TableCell colSpan={6} className="font-bold text-gray-900">TOTAL</TableCell>
+                        <TableCell className="text-center font-mono text-[12.5px] font-semibold">{jm(t.terlambat)}</TableCell>
+                        <TableCell className="text-center font-mono text-[12.5px] font-semibold">{jm(t.cepat)}</TableCell>
+                        <TableCell className="text-center font-mono text-[12.5px] font-semibold">{jm(t.kerja)}</TableCell>
+                        <TableCell className="text-center font-mono text-[12.5px] font-semibold">{jm(t.istirahat)}</TableCell>
+                        <TableCell className="text-center font-mono text-[12.5px] font-semibold">{jm(t.lemburAwal)}</TableCell>
+                        <TableCell className="text-center font-mono text-[12.5px] font-semibold">{jm(t.lemburAkhir)}</TableCell>
+                        <TableCell className="text-center font-mono text-[12.5px] font-semibold">{jm(t.lemburTotal)}</TableCell>
+                        <TableCell className="text-center font-mono text-[12.5px] font-semibold">{t.hadir} hari</TableCell>
+                        <TableCell />
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
+              </Card>
+            );
+          })}
         </div>
-      </Card>
+      )}
+
+      {!loading && report.length === 0 && (
+        <Card>
+          <CardContent className="p-10 text-center text-[13px] text-muted-foreground">
+            {pin || name || kantorId || jabatanId
+              ? "Tidak ada data untuk filter yang dipilih"
+              : "Pilih periode dan klik Tampilkan untuk melihat laporan"}
+          </CardContent>
+        </Card>
+      )}
 
       {report.length > 0 && (
         <Card>

@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import QRCode from "qrcode";
 import {
   Search, RefreshCw, Users, ChevronLeft, ChevronRight,
   Pencil, Trash2, Upload, Download, Plus,
-  CheckSquare, Square, Loader2, Database, Monitor, QrCode,
+  CheckSquare, Square, Loader2, Database, Monitor,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -72,10 +71,6 @@ export default function UserinfoPage() {
 
   // Import
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // QR
-  const [qrLoading, setQrLoading] = useState<string | null>(null);
-  const [qrImages, setQrImages] = useState<Record<string, string>>({});
 
   // Kantor & Jabatan
   const [kantors, setKantors] = useState<{ id: string; nama: string; jabatans: { id: string; nama: string }[] }[]>([]);
@@ -313,32 +308,6 @@ export default function UserinfoPage() {
     setTimeout(() => setSyncStatus(""), 5000);
   };
 
-  // ---- Set QR for a single user ----
-  const handleSetQr = async (pin: string, cloudId?: string) => {
-    setQrLoading(pin);
-    try {
-      const qrString = pin;
-      const res = await fetch("/api/fingerspot", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          command: "set_qrcode",
-          params: { pin, qrString, cloudId },
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        const url = await QRCode.toDataURL(qrString, { width: 150, margin: 2 });
-        setQrImages((prev) => ({ ...prev, [pin]: url }));
-      } else {
-        alert("Gagal: " + (data.error || "Unknown error"));
-      }
-    } catch {
-      alert("Gagal mengirim perintah");
-    }
-    setQrLoading(null);
-  };
-
   // ---- Add user ----
   const handleAdd = async () => {
     if (!addPin.trim() || !addName.trim()) return;
@@ -566,7 +535,6 @@ export default function UserinfoPage() {
               <TableHead className="text-center">Face</TableHead>
               <TableHead className="text-center">RFID</TableHead>
               <TableHead>Device ID</TableHead>
-              <TableHead className="w-16 text-center">QR</TableHead>
               <TableHead className="text-center">Aksi</TableHead>
             </TableRow>
           </TableHeader>
@@ -624,30 +592,6 @@ export default function UserinfoPage() {
                 <TableCell className="text-center">{row.face}</TableCell>
                 <TableCell className="text-center">{row.rfid}</TableCell>
                 <TableCell className="font-mono text-[11px] text-muted-foreground">{row.deviceCloudId || "-"}</TableCell>
-                <TableCell className="text-center">
-                  {qrImages[row.pin] ? (
-                    <img
-                      src={qrImages[row.pin]}
-                      alt="QR"
-                      className="mx-auto h-9 w-9 rounded border border-gray-200 cursor-pointer"
-                      onClick={() => window.open(qrImages[row.pin], "_blank")}
-                      title="Klik untuk perbesar"
-                    />
-                  ) : (
-                    <button
-                      onClick={() => handleSetQr(row.pin, syncDeviceId || undefined)}
-                      disabled={qrLoading === row.pin}
-                      className="inline-flex items-center gap-1 rounded-lg bg-amber-50 px-2 py-1 text-[11px] text-amber-700 hover:bg-amber-100 transition-colors disabled:opacity-50"
-                    >
-                      {qrLoading === row.pin ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <QrCode className="h-3 w-3" />
-                      )}
-                      QR
-                    </button>
-                  )}
-                </TableCell>
                 <TableCell className="text-center">
                   <div className="flex items-center justify-center gap-1">
                     <Button

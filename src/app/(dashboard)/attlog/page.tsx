@@ -5,7 +5,6 @@ import { formatDateTime, getVerifyMethod, getStatusScan } from "@/lib/utils";
 import { Download, Search, ChevronLeft, ChevronRight, Fingerprint, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DateRangePicker, getDateRange } from "@/components/date-range-picker";
 
@@ -19,6 +18,15 @@ interface AttlogEntry {
   status: string;
   source: string;
   createdAt: string;
+  employeeName?: string | null;
+  employeeKantor?: string | null;
+  employeeJabatan?: string | null;
+}
+
+interface Kantor {
+  id: string;
+  nama: string;
+  jabatans: { id: string; nama: string }[];
 }
 
 export default function AttlogPage() {
@@ -27,6 +35,10 @@ export default function AttlogPage() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [pin, setPin] = useState("");
+  const [name, setName] = useState("");
+  const [kantorId, setKantorId] = useState("");
+  const [jabatanId, setJabatanId] = useState("");
+  const [kantors, setKantors] = useState<Kantor[]>([]);
   const [fetching, setFetching] = useState(false);
   const [fetchProgress, setFetchProgress] = useState("");
   const [devices, setDevices] = useState<{ id: string; cloudId: string; name: string }[]>([]);
@@ -40,15 +52,27 @@ export default function AttlogPage() {
     }).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    fetch("/api/kantor")
+      .then((r) => r.json())
+      .then((d) => setKantors(d.data || []))
+      .catch(() => {});
+  }, []);
+
+  const selectedKantor = kantors.find((k) => k.id === kantorId);
+
   const getParams = useCallback(() => {
     const dr = getDateRange();
     const params = new URLSearchParams({ page: page.toString(), limit: limit.toString() });
     if (pin) params.set("pin", pin);
+    if (name) params.set("name", name);
+    if (kantorId) params.set("kantorId", kantorId);
+    if (jabatanId) params.set("jabatanId", jabatanId);
     if (deviceCloudId) params.set("deviceCloudId", deviceCloudId);
     if (dr.from) params.set("startDate", dr.from);
     if (dr.to) params.set("endDate", dr.to);
     return params;
-  }, [page, pin, deviceCloudId]);
+  }, [page, pin, name, kantorId, jabatanId, deviceCloudId]);
 
   const fetchData = useCallback((silent = false) => {
     if (!silent) setLoading(true);
@@ -135,6 +159,8 @@ export default function AttlogPage() {
   };
 
   const totalPages = Math.ceil(total / limit);
+  const inputCls =
+    "flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
 
   return (
     <div className="space-y-6">
@@ -151,16 +177,69 @@ export default function AttlogPage() {
       <Card>
         <CardContent className="p-5">
           <div className="flex flex-wrap items-end gap-3">
-            <div>
-              <label className="block text-[13px] font-medium text-gray-500 mb-1.5">PIN Karyawan</label>
-              <Input type="text" value={pin} onChange={(e) => setPin(e.target.value)} placeholder="Semua" className="w-36" />
+            <div className="w-32">
+              <label className="block text-[13px] font-medium text-gray-500 mb-1.5">
+                ID (PIN)
+              </label>
+              <input
+                type="text"
+                value={pin}
+                onChange={(e) => setPin(e.target.value)}
+                placeholder="Semua"
+                className={inputCls}
+              />
             </div>
-            <div>
-              <label className="block text-[13px] font-medium text-gray-500 mb-1.5">Mesin</label>
+            <div className="w-44">
+              <label className="block text-[13px] font-medium text-gray-500 mb-1.5">
+                Nama
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Cari nama..."
+                className={inputCls}
+              />
+            </div>
+            <div className="w-44">
+              <label className="block text-[13px] font-medium text-gray-500 mb-1.5">
+                Kantor
+              </label>
+              <select
+                value={kantorId}
+                onChange={(e) => { setKantorId(e.target.value); setJabatanId(""); }}
+                className={inputCls}
+              >
+                <option value="">Semua Kantor</option>
+                {kantors.map((k) => (
+                  <option key={k.id} value={k.id}>{k.nama}</option>
+                ))}
+              </select>
+            </div>
+            <div className="w-44">
+              <label className="block text-[13px] font-medium text-gray-500 mb-1.5">
+                Jabatan
+              </label>
+              <select
+                value={jabatanId}
+                onChange={(e) => setJabatanId(e.target.value)}
+                disabled={!kantorId}
+                className={inputCls + " disabled:opacity-50"}
+              >
+                <option value="">{kantorId ? "Semua Jabatan" : "Pilih Kantor dulu"}</option>
+                {selectedKantor?.jabatans.map((j) => (
+                  <option key={j.id} value={j.id}>{j.nama}</option>
+                ))}
+              </select>
+            </div>
+            <div className="min-w-[180px]">
+              <label className="block text-[13px] font-medium text-gray-500 mb-1.5">
+                Mesin
+              </label>
               <select
                 value={deviceCloudId}
                 onChange={(e) => setDeviceCloudId(e.target.value)}
-                className="h-10 rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 min-w-[180px]"
+                className={inputCls}
               >
                 <option value="">Semua Mesin</option>
                 {devices.map((d) => (
@@ -194,6 +273,9 @@ export default function AttlogPage() {
             <TableRow>
               <TableHead>Waktu Scan</TableHead>
               <TableHead>PIN</TableHead>
+              <TableHead>Nama</TableHead>
+              <TableHead>Kantor</TableHead>
+              <TableHead>Jabatan</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Verifikasi</TableHead>
               <TableHead>Mesin</TableHead>
@@ -203,7 +285,7 @@ export default function AttlogPage() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-48 text-center text-muted-foreground">
+                <TableCell colSpan={9} className="h-48 text-center text-muted-foreground">
                   <div className="flex items-center justify-center gap-2">
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" /> Memuat...
                   </div>
@@ -211,7 +293,7 @@ export default function AttlogPage() {
               </TableRow>
             ) : data.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-48 text-center text-muted-foreground">
+                <TableCell colSpan={9} className="h-48 text-center text-muted-foreground">
                   Tidak ada data. Pilih tanggal dan klik &quot;Tarik dari Mesin&quot;.
                 </TableCell>
               </TableRow>
@@ -219,6 +301,25 @@ export default function AttlogPage() {
               <TableRow key={row.id}>
                 <TableCell className="whitespace-nowrap">{formatDateTime(row.scanTime)}</TableCell>
                 <TableCell className="font-mono">{row.employeePin}</TableCell>
+                <TableCell className="font-medium">{row.employeeName || <span className="text-gray-300">-</span>}</TableCell>
+                <TableCell className="text-[12.5px]">
+                  {row.employeeKantor ? (
+                    <span className="rounded-md bg-indigo-50 px-2 py-0.5 text-[11.5px] font-medium text-indigo-700">
+                      {row.employeeKantor}
+                    </span>
+                  ) : (
+                    <span className="text-gray-300">-</span>
+                  )}
+                </TableCell>
+                <TableCell className="text-[12.5px]">
+                  {row.employeeJabatan ? (
+                    <span className="rounded-md bg-blue-50 px-2 py-0.5 text-[11.5px] font-medium text-blue-700">
+                      {row.employeeJabatan}
+                    </span>
+                  ) : (
+                    <span className="text-gray-300">-</span>
+                  )}
+                </TableCell>
                 <TableCell>{getStatusScan(row.statusScan)}</TableCell>
                 <TableCell>{getVerifyMethod(row.verifyMethod)}</TableCell>
                 <TableCell className="text-xs">
