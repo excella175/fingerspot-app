@@ -5,16 +5,25 @@ function pad(n: number) {
   return String(n).padStart(2, "0");
 }
 
+// All times in this app are WIB (UTC+7). Shift a Date so that getUTC* getters
+// return WIB wall-clock values regardless of the server timezone (Vercel = UTC).
+const WIB_MS = 7 * 3600 * 1000;
+
+function wibView(d: Date): Date {
+  return new Date(d.getTime() + WIB_MS);
+}
+
 function dateStrFromDate(d: Date) {
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const v = wibView(d);
+  return `${v.getUTCFullYear()}-${pad(v.getUTCMonth() + 1)}-${pad(v.getUTCDate())}`;
 }
 
 function dayNameFromDate(date: Date) {
-  return ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"][date.getDay()];
+  return ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"][wibView(date).getUTCDay()];
 }
 
 function isWeekendFromDate(date: Date) {
-  const d = date.getDay();
+  const d = wibView(date).getUTCDay();
   return d === 0 || d === 6;
 }
 
@@ -22,13 +31,17 @@ function dateRangeFromParams(searchParams: URLSearchParams): { dates: Date[]; da
   const f = searchParams.get("from");
   const t = searchParams.get("to");
   if (f && t) {
-    const start = new Date(f + "T00:00:00+07:00");
-    const end = new Date(t + "T00:00:00+07:00");
     const dates: Date[] = [];
     const dateStrs: string[] = [];
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      dates.push(new Date(d));
-      dateStrs.push(dateStrFromDate(d));
+    const dayMs = 24 * 3600 * 1000;
+    let cur = new Date(f + "T00:00:00+07:00");
+    const last = new Date(t + "T00:00:00+07:00");
+    while (cur.getTime() <= last.getTime()) {
+      const ds = dateStrFromDate(cur);
+      dateStrs.push(ds);
+      // Noon WIB: safe for getDay()/getUTC* on any server timezone
+      dates.push(new Date(ds + "T12:00:00+07:00"));
+      cur = new Date(cur.getTime() + dayMs);
     }
     return { dates, dateStrs, from: f, to: t, isMonth: false, month: 0, year: 0 };
   }
@@ -40,9 +53,9 @@ function dateRangeFromParams(searchParams: URLSearchParams): { dates: Date[]; da
   const dates: Date[] = [];
   const dateStrs: string[] = [];
   for (let day = 1; day <= totalDays; day++) {
-    const d = new Date(y, m - 1, day);
-    dates.push(d);
-    dateStrs.push(`${y}-${pad(m)}-${pad(day)}`);
+    const ds = `${y}-${pad(m)}-${pad(day)}`;
+    dates.push(new Date(ds + "T12:00:00+07:00"));
+    dateStrs.push(ds);
   }
   return { dates, dateStrs, from: `${y}-${pad(m)}-01`, to: `${y}-${pad(m)}-${pad(totalDays)}`, isMonth: true, month: m, year: y };
 }
@@ -59,7 +72,8 @@ function minutesToStr(m: number): string {
 }
 
 function localMin(d: Date): number {
-  return d.getHours() * 60 + d.getMinutes();
+  const v = wibView(d);
+  return v.getUTCHours() * 60 + v.getUTCMinutes();
 }
 
 function employeeWhere(searchParams: URLSearchParams) {
@@ -245,9 +259,7 @@ async function handleDetail(searchParams: URLSearchParams) {
 
       if (scheduledStart) {
         const schedStartMin = toMinutes(scheduledStart);
-        const localHours = firstScan.getHours();
-        const localMinutes = firstScan.getMinutes();
-        const scanInLocalMin = localHours * 60 + localMinutes;
+        const scanInLocalMin = localMin(firstScan);
         const diffLate = scanInLocalMin - schedStartMin;
 
         let tolerance = 0;
@@ -265,7 +277,7 @@ async function handleDetail(searchParams: URLSearchParams) {
 
       if (scheduledEnd) {
         const schedEndMin = toMinutes(scheduledEnd);
-        const scanOutLocalMin = lastScan.getHours() * 60 + lastScan.getMinutes();
+        const scanOutLocalMin = localMin(lastScan);
         const diffEarly = schedEndMin - scanOutLocalMin;
 
         let tolerance = 0;
@@ -415,7 +427,7 @@ async function handleAttendance(searchParams: URLSearchParams) {
             const jamKerja = sched?.jamKerjaKode ? jkMap.get(sched.jamKerjaKode) || null : null;
             if (jamKerja?.startTime) {
               const firstScan = dayScans[0].scanTime;
-              const scanInMin = firstScan.getHours() * 60 + firstScan.getMinutes();
+              const scanInMin = localMin(firstScan);
               const schedMin = toMinutes(jamKerja.startTime);
               let tolerance = 0;
               if (jamKerja.aturanKode) {

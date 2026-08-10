@@ -19,6 +19,7 @@ interface JadwalManualItem { id: string; employeePin: string; date: string; jamK
 
 const DAYS = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 const DAYS_FULL = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+const pad2 = (n: number) => String(n).padStart(2, "0");
 
 export default function JadwalPage() {
   const [tab, setTab] = useState<"auto" | "manual">("auto");
@@ -38,10 +39,7 @@ export default function JadwalPage() {
   const [manualMonth, setManualMonth] = useState(new Date().getMonth() + 1);
   const [manualYear, setManualYear] = useState(new Date().getFullYear());
   const [manualSearch, setManualSearch] = useState("");
-  const [manualModal, setManualModal] = useState(false);
-  const [manualForm, setManualForm] = useState({ employeePin: "", date: "", jamKerjaKode: "", startTime: "", endTime: "" });
-  const [editManualId, setEditManualId] = useState<string | null>(null);
-  const [savingManual, setSavingManual] = useState(false);
+  const [savingCell, setSavingCell] = useState("");
 
   useEffect(() => {
     fetch("/api/jam-kerja").then(r => r.json()).then(d => setJamKerja(d.data || [])).catch(() => {});
@@ -81,62 +79,40 @@ export default function JadwalPage() {
     return { jamKerjaKode: "", source: "none" };
   };
 
-  const buildManualView = () => {
+  const buildManualGrid = () => {
     const daysInMonth = new Date(manualYear, manualMonth, 0).getDate();
-    const rows: { pin: string; name: string; date: string; day: number; schedule: ReturnType<typeof getScheduleForDate> }[] = [];
     const filteredUsers = manualSearch
       ? users.filter(u => u.name.toLowerCase().includes(manualSearch.toLowerCase()) || u.pin.includes(manualSearch))
       : users;
-    for (const user of filteredUsers) {
-      for (let d = 1; d <= daysInMonth; d++) {
-        const dateStr = `${manualYear}-${String(manualMonth).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-        const schedule = getScheduleForDate(user.pin, dateStr);
-        rows.push({ pin: user.pin, name: user.name, date: dateStr, day: d, schedule });
-      }
-    }
-    return rows;
+    const manualByKey = new Map(manualData.map(m => [`${m.employeePin}|${m.date.slice(0, 10)}`, m]));
+    return { daysInMonth, filteredUsers, manualByKey };
   };
 
-  const manualView = buildManualView();
-
-  const openAddManual = () => {
-    setManualForm({ employeePin: "", date: "", jamKerjaKode: "", startTime: "", endTime: "" });
-    setEditManualId(null);
-    setManualModal(true);
-  };
-
-  const openEditManual = (item: JadwalManualItem) => {
-    setManualForm({
-      employeePin: item.employeePin,
-      date: item.date.slice(0, 10),
-      jamKerjaKode: item.jamKerjaKode,
-      startTime: item.startTime || "",
-      endTime: item.endTime || "",
-    });
-    setEditManualId(item.id);
-    setManualModal(true);
-  };
-
-  const saveManual = async () => {
-    if (!manualForm.employeePin || !manualForm.date || !manualForm.jamKerjaKode) { alert("Karyawan, tanggal, dan jam kerja harus diisi"); return; }
-    setSavingManual(true);
+  const saveCell = async (pin: string, dateStr: string, kode: string) => {
+    const key = `${pin}|${dateStr}`;
+    const existing = manualData.find(m => m.employeePin === pin && m.date?.slice(0, 10) === dateStr);
+    setSavingCell(key);
     try {
-      const res = await fetch(`/api/jadwal-manual${editManualId ? `?id=${editManualId}` : ""}`, {
-        method: editManualId ? "PUT" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(manualForm),
-      });
-      const r = await res.json();
-      if (r.success) { setManualModal(false); fetchManual(); }
-      else alert("Gagal: " + (r.error || ""));
-    } catch { alert("Gagal"); }
-    setSavingManual(false);
-  };
-
-  const deleteManual = async (id: string) => {
-    if (!confirm("Hapus jadwal manual ini?")) return;
-    try { await fetch(`/api/jadwal-manual?id=${id}`, { method: "DELETE" }); fetchManual(); }
-    catch { alert("Gagal"); }
+      if (!kode) {
+        if (existing) {
+          const res = await fetch(`/api/jadwal-manual?id=${existing.id}`, { method: "DELETE" });
+          const r = await res.json();
+          if (!r.success) alert("Gagal menghapus: " + (r.error || ""));
+        }
+      } else {
+        const res = await fetch("/api/jadwal-manual", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ employeePin: pin, date: dateStr, jamKerjaKode: kode }),
+        });
+        const r = await res.json();
+        if (!r.success) alert("Gagal menyimpan: " + (r.error || ""));
+      }
+      fetchManual();
+    } catch {
+      alert("Gagal menyimpan jadwal");
+    }
+    setSavingCell("");
   };
 
   const openAddAuto = () => {
@@ -177,25 +153,34 @@ export default function JadwalPage() {
   };
 
   const exportExcel = () => {
-    const rows = manualView.map(m => ({
-      Karyawan: m.name,
-      PIN: m.pin,
-      Tanggal: m.date,
-      "Jam Kerja": getJKName(m.schedule.jamKerjaKode),
-      "Jam Mulai": m.schedule.startTime || "",
-      "Jam Selesai": m.schedule.endTime || "",
-      Sumber: m.schedule.source === "manual" ? "Manual" : m.schedule.source === "auto" ? "Auto" : "",
-    }));
-    const ws = XLSX.utils.json_to_sheet(rows);
+    const { daysInMonth, filteredUsers, manualByKey } = buildManualGrid();
+    const aoa: any[][] = [];
+    aoa.push(["Start Date", `${manualYear}-${pad2(manualMonth)}-01`]);
+    aoa.push(["End Date", `${manualYear}-${pad2(manualMonth)}-${pad2(daysInMonth)}`]);
+    aoa.push([]);
+    const header = ["No", "ID", "Name"];
+    for (let d = 1; d <= daysInMonth; d++) header.push(`${pad2(d)}/${pad2(manualMonth)}`);
+    aoa.push(header);
+    filteredUsers.forEach((u, i) => {
+      const row: any[] = [i + 1, u.pin, u.name];
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${manualYear}-${pad2(manualMonth)}-${pad2(d)}`;
+        const manual = manualByKey.get(`${u.pin}|${dateStr}`);
+        const auto = getScheduleForDate(u.pin, dateStr);
+        row.push(manual?.jamKerjaKode || (auto.source === "auto" ? auto.jamKerjaKode : ""));
+      }
+      aoa.push(row);
+    });
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws["!cols"] = [{ wch: 5 }, { wch: 10 }, { wch: 22 }, ...Array(daysInMonth).fill({ wch: 10 })];
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Jadwal Manual");
+    XLSX.utils.book_append_sheet(wb, ws, "Timesheet");
     const instructions = [
       { "PETUNJUK": "Kode Jam Kerja yang tersedia:" },
       ...jamKerja.map(j => ({ "PETUNJUK": `${j.kode} - ${j.name} (${j.startTime || "?"} - ${j.endTime || "?"})` })),
     ];
-    const ws2 = XLSX.utils.json_to_sheet(instructions);
-    XLSX.utils.book_append_sheet(wb, ws2, "Petunjuk");
-    XLSX.writeFile(wb, `Jadwal_${manualMonth}_${manualYear}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(instructions), "Petunjuk");
+    XLSX.writeFile(wb, `Timesheet_${pad2(manualMonth)}_${manualYear}.xlsx`);
   };
 
   const importExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -207,14 +192,40 @@ export default function JadwalPage() {
         const data = new Uint8Array(ev.target?.result as ArrayBuffer);
         const wb = XLSX.read(data, { type: "array" });
         const ws = wb.Sheets[wb.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(ws) as any[];
-        const batch = rows.map((r: any) => ({
-          employeePin: String(r.PIN || r.employeePin || r.pin || ""),
-          date: String(r.Tanggal || r.date || ""),
-          jamKerjaKode: String(r["Jam Kerja"] || r.jamKerjaKode || r.kode || "").split(" - ")[0],
-          startTime: String(r["Jam Mulai"] || r.startTime || ""),
-          endTime: String(r["Jam Selesai"] || r.endTime || ""),
-        })).filter(r => r.employeePin && r.date && r.jamKerjaKode);
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" }) as any[][];
+
+        let startDate = "";
+        let headerIdx = -1;
+        rows.forEach((r, idx) => {
+          const c0 = String(r[0] || "").trim().toLowerCase();
+          if (c0.includes("start date")) startDate = String(r[1] || "").trim();
+          if (c0 === "no" && String(r[2] || "").trim().toLowerCase() === "name" && headerIdx === -1) headerIdx = idx;
+        });
+        if (!startDate || headerIdx === -1) {
+          alert("Format file tidak dikenali. Gunakan format Timesheet (No/ID/Name + kolom tanggal).");
+          return;
+        }
+        const year = parseInt(startDate.slice(0, 4));
+        const batch: any[] = [];
+        let count = 0;
+        for (let i = headerIdx + 1; i < rows.length; i++) {
+          const r = rows[i];
+          const pin = String(r[1] ?? "").trim();
+          if (!pin) continue;
+          for (let c = 3; c < r.length; c++) {
+            const kode = String(r[c] ?? "").trim();
+            if (!kode) continue;
+            const dayCol = String(rows[headerIdx][c] ?? "").trim();
+            const m = dayCol.match(/^(\d{1,2})\/(\d{1,2})/);
+            if (!m) continue;
+            batch.push({
+              employeePin: pin,
+              date: `${year}-${pad2(Number(m[2]))}-${pad2(Number(m[1]))}`,
+              jamKerjaKode: kode,
+            });
+            count++;
+          }
+        }
         if (batch.length === 0) { alert("Tidak ada data valid di Excel"); return; }
         const res = await fetch("/api/jadwal-manual", {
           method: "POST",
@@ -222,7 +233,7 @@ export default function JadwalPage() {
           body: JSON.stringify({ action: "batch", data: batch }),
         });
         const result = await res.json();
-        if (result.success) { alert(`${batch.length} jadwal berhasil diimport`); fetchManual(); }
+        if (result.success) { alert(`${count} jadwal berhasil diimport`); fetchManual(); }
         else alert("Gagal: " + (result.error || ""));
       } catch { alert("Gagal membaca file Excel"); }
     };
@@ -314,152 +325,124 @@ export default function JadwalPage() {
         </div>
       )}
 
-      {tab === "manual" && (
-        <div className="space-y-4">
-          <Card>
-            <CardContent className="p-5 pt-5">
-              <div className="flex flex-wrap items-center gap-3">
-                <div>
-                  <label className="block text-[13px] font-medium text-gray-500">Bulan</label>
-                  <select value={manualMonth} onChange={e => setManualMonth(Number(e.target.value))} className="mt-1 flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring">
-                    {Array.from({length: 12}, (_, i) => <option key={i+1} value={i+1}>{i+1}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[13px] font-medium text-gray-500">Tahun</label>
-                  <select value={manualYear} onChange={e => setManualYear(Number(e.target.value))} className="mt-1 flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring">
-                    {Array.from({length: 5}, (_, i) => <option key={i} value={2024+i}>{2024+i}</option>)}
-                  </select>
-                </div>
-                <div className="flex-1 min-w-[200px]">
-                  <label className="block text-[13px] font-medium text-gray-500">Cari Karyawan</label>
-                  <div className="mt-1 flex items-center gap-2 rounded-md border border-input px-3 py-1 shadow-sm">
-                    <Search className="h-3.5 w-3.5 text-gray-400" />
-                    <input value={manualSearch} onChange={e => setManualSearch(e.target.value)} className="flex-1 border-0 bg-transparent text-sm outline-none" placeholder="Nama atau PIN..." />
+      {tab === "manual" && (() => {
+        const { daysInMonth, filteredUsers, manualByKey } = buildManualGrid();
+        return (
+          <div className="space-y-4">
+            <Card>
+              <CardContent className="p-5 pt-5">
+                <div className="flex flex-wrap items-center gap-3">
+                  <div>
+                    <label className="block text-[13px] font-medium text-gray-500">Bulan</label>
+                    <select value={manualMonth} onChange={e => setManualMonth(Number(e.target.value))} className="mt-1 flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring">
+                      {Array.from({length: 12}, (_, i) => <option key={i+1} value={i+1}>{i+1}</option>)}
+                    </select>
                   </div>
+                  <div>
+                    <label className="block text-[13px] font-medium text-gray-500">Tahun</label>
+                    <select value={manualYear} onChange={e => setManualYear(Number(e.target.value))} className="mt-1 flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring">
+                      {Array.from({length: 5}, (_, i) => <option key={i} value={2024+i}>{2024+i}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex-1 min-w-[200px]">
+                    <label className="block text-[13px] font-medium text-gray-500">Cari Karyawan</label>
+                    <div className="mt-1 flex items-center gap-2 rounded-md border border-input px-3 py-1 shadow-sm">
+                      <Search className="h-3.5 w-3.5 text-gray-400" />
+                      <input value={manualSearch} onChange={e => setManualSearch(e.target.value)} className="flex-1 border-0 bg-transparent text-sm outline-none" placeholder="Nama atau PIN..." />
+                    </div>
+                  </div>
+                  <Button variant="default" size="sm" onClick={exportExcel} className="bg-emerald-600 hover:bg-emerald-700">
+                    <Download className="h-4 w-4" />Export Excel
+                  </Button>
+                  <label className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-700 cursor-pointer relative">
+                    <Upload className="h-4 w-4" />Import Excel
+                    <input type="file" accept=".xlsx,.xls" onChange={importExcel} className="absolute inset-0 opacity-0 cursor-pointer" />
+                  </label>
                 </div>
-                <Button variant="default" size="sm" onClick={exportExcel} className="bg-emerald-600 hover:bg-emerald-700">
-                  <Download className="h-4 w-4" />Export Excel
-                </Button>
-                <label className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-700 cursor-pointer relative">
-                  <Upload className="h-4 w-4" />Import Excel
-                  <input type="file" accept=".xlsx,.xls" onChange={importExcel} className="absolute inset-0 opacity-0 cursor-pointer" />
-                </label>
-              </div>
-            </CardContent>
-          </Card>
-
-          {manualLoading ? (
-            <Card>
-              <CardContent className="py-12 text-center text-gray-300">Memuat...</CardContent>
-            </Card>
-          ) : manualView.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center text-gray-300">
-                <p>Tidak ada karyawan untuk bulan ini.</p>
-                <p className="text-xs mt-1">Tambahkan karyawan atau buat jadwal Auto terlebih dahulu.</p>
               </CardContent>
             </Card>
-          ) : (
-            <Card className="overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Karyawan</TableHead>
-                    <TableHead>Tanggal</TableHead>
-                    <TableHead>Hari</TableHead>
-                    <TableHead>Jam Kerja</TableHead>
-                    <TableHead>Jam Mulai</TableHead>
-                    <TableHead>Jam Selesai</TableHead>
-                    <TableHead>Sumber</TableHead>
-                    <TableHead className="text-center">Aksi</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {manualView.map((row, idx) => {
-                    const manualEntry = manualData.find(m => m.employeePin === row.pin && m.date?.slice(0, 10) === row.date);
-                    return (
-                      <TableRow key={`${row.pin}-${row.date}`}>
-                        <TableCell className="font-medium text-gray-900">{row.name}</TableCell>
-                        <TableCell className="font-mono text-gray-700">{row.date}</TableCell>
-                        <TableCell className="text-gray-500">{DAYS_FULL[new Date(row.date).getDay()]}</TableCell>
-                        <TableCell className="text-gray-700">{row.schedule.jamKerjaKode ? getJKName(row.schedule.jamKerjaKode) : "-"}</TableCell>
-                        <TableCell className="font-mono text-gray-700">{row.schedule.startTime || (row.schedule.jamKerjaKode ? getJK(row.schedule.jamKerjaKode)?.startTime || "-" : "-")}</TableCell>
-                        <TableCell className="font-mono text-gray-700">{row.schedule.endTime || (row.schedule.jamKerjaKode ? getJK(row.schedule.jamKerjaKode)?.endTime || "-" : "-")}</TableCell>
-                        <TableCell>
-                          {row.schedule.source === "manual" ? (
-                            <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">MANUAL</Badge>
-                          ) : row.schedule.source === "auto" ? (
-                            <Badge variant="secondary" className="bg-gray-100 text-gray-600 hover:bg-gray-100">AUTO</Badge>
-                          ) : (
-                            <span className="text-gray-300">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <div className="flex items-center justify-center gap-1">
-                            {manualEntry && (
-                              <>
-                                <Button variant="ghost" size="icon" onClick={() => openEditManual(manualEntry)}>
-                                  <Pencil className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button variant="ghost" size="icon" onClick={() => deleteManual(manualEntry.id)}>
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </Card>
-          )}
-        </div>
-      )}
 
-      <Dialog open={manualModal} onOpenChange={(open) => { if (!open) setManualModal(false); }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{editManualId ? "Edit" : "Tambah"} Jadwal Manual</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <label className="block text-[13px] font-medium text-gray-500">Karyawan</label>
-              <select value={manualForm.employeePin} onChange={e => setManualForm(p => ({ ...p, employeePin: e.target.value }))} className="mt-1 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring">
-                <option value="">Pilih Karyawan</option>
-                {users.map(u => <option key={u.pin} value={u.pin}>{u.name} ({u.pin})</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-[13px] font-medium text-gray-500">Tanggal</label>
-              <Input type="date" value={manualForm.date} onChange={e => setManualForm(p => ({ ...p, date: e.target.value }))} className="mt-1" />
-            </div>
-            <div>
-              <label className="block text-[13px] font-medium text-gray-500">Jam Kerja</label>
-              <select value={manualForm.jamKerjaKode} onChange={e => setManualForm(p => ({ ...p, jamKerjaKode: e.target.value }))} className="mt-1 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring">
-                <option value="">Pilih Jam Kerja</option>
-                {jamKerja.map(j => <option key={j.kode} value={j.kode}>{j.kode} - {j.name}</option>)}
-              </select>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[13px] font-medium text-gray-500">Jam Mulai</label>
-                <Input type="time" value={manualForm.startTime} onChange={e => setManualForm(p => ({ ...p, startTime: e.target.value }))} className="mt-1" />
-              </div>
-              <div>
-                <label className="block text-[13px] font-medium text-gray-500">Jam Selesai</label>
-                <Input type="time" value={manualForm.endTime} onChange={e => setManualForm(p => ({ ...p, endTime: e.target.value }))} className="mt-1" />
-              </div>
-            </div>
+            {manualLoading ? (
+              <Card>
+                <CardContent className="py-12 text-center text-gray-300">Memuat...</CardContent>
+              </Card>
+            ) : filteredUsers.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center text-gray-300">
+                  <p>Tidak ada karyawan untuk bulan ini.</p>
+                  <p className="text-xs mt-1">Tambahkan karyawan atau buat jadwal Auto terlebih dahulu.</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="overflow-hidden">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="sticky left-0 z-10 min-w-[46px] bg-white">No</TableHead>
+                        <TableHead className="sticky left-[46px] z-10 min-w-[88px] bg-white">ID</TableHead>
+                        <TableHead className="sticky left-[134px] z-10 min-w-[170px] bg-white">Nama</TableHead>
+                        {Array.from({length: daysInMonth}, (_, d) => d + 1).map(d => {
+                          const wd = new Date(manualYear, manualMonth - 1, d).getDay();
+                          const isWeekend = wd === 0 || wd === 6;
+                          return (
+                            <TableHead key={d} className={`min-w-[132px] whitespace-nowrap text-center ${isWeekend ? "bg-amber-50/80" : "bg-white"}`}>
+                              {d} <span className="ml-1 font-normal text-gray-400">{DAYS[wd]}</span>
+                            </TableHead>
+                          );
+                        })}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredUsers.map((u, i) => (
+                        <TableRow key={u.pin}>
+                          <TableCell className="sticky left-0 z-10 bg-white text-gray-400">{i + 1}</TableCell>
+                          <TableCell className="sticky left-[46px] z-10 bg-white font-mono text-gray-600">{u.pin}</TableCell>
+                          <TableCell className="sticky left-[134px] z-10 bg-white font-medium text-gray-900">{u.name}</TableCell>
+                          {Array.from({length: daysInMonth}, (_, d) => d + 1).map(d => {
+                            const wd = new Date(manualYear, manualMonth - 1, d).getDay();
+                            const isWeekend = wd === 0 || wd === 6;
+                            const dateStr = `${manualYear}-${pad2(manualMonth)}-${pad2(d)}`;
+                            const manual = manualByKey.get(`${u.pin}|${dateStr}`);
+                            const auto = getScheduleForDate(u.pin, dateStr);
+                            const saving = savingCell === `${u.pin}|${dateStr}`;
+                            return (
+                              <TableCell key={d} className={`p-1.5 ${isWeekend ? "bg-amber-50/40" : ""}`}>
+                                <select
+                                  value={manual?.jamKerjaKode || ""}
+                                  disabled={saving}
+                                  onChange={(e) => saveCell(u.pin, dateStr, e.target.value)}
+                                  className={`h-7 w-full min-w-[110px] rounded-md border px-1.5 text-[11.5px] outline-none focus:ring-1 focus:ring-indigo-400 ${
+                                    manual
+                                      ? "border-indigo-200 bg-indigo-50/60 font-medium text-indigo-800"
+                                      : "border-gray-200 bg-white text-gray-500"
+                                  } ${saving ? "opacity-50" : ""}`}
+                                >
+                                  <option value="">—</option>
+                                  {jamKerja.map(j => (
+                                    <option key={j.kode} value={j.kode}>{j.kode} - {j.name}</option>
+                                  ))}
+                                </select>
+                                {!manual && auto.source === "auto" && (
+                                  <span className="mt-0.5 block text-[9.5px] leading-none text-gray-300">auto: {auto.jamKerjaKode}</span>
+                                )}
+                              </TableCell>
+                            );
+                          })}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <div className="flex flex-wrap items-center gap-4 border-t bg-gray-50/50 px-4 py-2.5 text-[11.5px] text-gray-400">
+                  <span><span className="mr-1 inline-block h-3 w-3 rounded border border-indigo-200 bg-indigo-50 align-middle" /> = jadwal manual</span>
+                  <span>Keterangan &quot;auto&quot; kecil = jadwal auto (bisa dioverride dengan memilih jam kerja)</span>
+                </div>
+              </Card>
+            )}
           </div>
-          <div className="flex gap-2 justify-end mt-5">
-            <Button variant="outline" onClick={() => setManualModal(false)}>Batal</Button>
-            <Button onClick={saveManual} disabled={savingManual}>{savingManual ? "Menyimpan..." : "Simpan"}</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+        );
+      })()}
 
       <Dialog open={autoModal} onOpenChange={(open) => { if (!open) setAutoModal(false); }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
