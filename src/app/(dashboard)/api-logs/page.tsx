@@ -68,8 +68,8 @@ export default function ApiLogsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50">
-          <ScrollText className="h-5 w-5 text-amber-600" />
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-sm shadow-amber-200">
+          <ScrollText className="h-5 w-5 text-white" />
         </div>
         <div>
           <h1 className="text-xl font-bold text-gray-900">Riwayat API</h1>

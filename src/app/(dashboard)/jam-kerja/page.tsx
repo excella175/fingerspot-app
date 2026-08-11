@@ -100,8 +100,8 @@ export default function JamKerjaPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-50">
-          <Briefcase className="h-5 w-5 text-cyan-600" />
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-sky-600 shadow-sm shadow-cyan-200">
+          <Briefcase className="h-5 w-5 text-white" />
         </div>
         <div>
           <h1 className="text-xl font-bold text-gray-900">Jam Kerja</h1>

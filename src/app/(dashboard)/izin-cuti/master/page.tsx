@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, ClipboardList } from "lucide-react";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -128,9 +128,14 @@ export default function MasterIzinCutiPage() {
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Master Izin & Cuti</h1>
-          <p className="text-sm text-gray-500">Kelola jenis izin dan cuti karyawan</p>
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-sm shadow-emerald-200">
+            <ClipboardList className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">Master Izin & Cuti</h1>
+            <p className="text-sm text-gray-500">Kelola jenis izin dan cuti karyawan</p>
+          </div>
         </div>
         <Button onClick={openAdd}>
           <Plus className="h-4 w-4 mr-1.5" /> Tambah Izin / Cuti
