@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import { CalendarDays, Plus, Pencil, Trash2, Search, Download, Upload } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
@@ -97,7 +98,7 @@ export default function JadwalPage() {
         if (existing) {
           const res = await fetch(`/api/jadwal-manual?id=${existing.id}`, { method: "DELETE" });
           const r = await res.json();
-          if (!r.success) alert("Gagal menghapus: " + (r.error || ""));
+          if (!r.success) toast.error(r.error || "Gagal menghapus jadwal");
         }
       } else {
         const res = await fetch("/api/jadwal-manual", {
@@ -106,11 +107,11 @@ export default function JadwalPage() {
           body: JSON.stringify({ employeePin: pin, date: dateStr, jamKerjaKode: kode }),
         });
         const r = await res.json();
-        if (!r.success) alert("Gagal menyimpan: " + (r.error || ""));
+        if (!r.success) toast.error(r.error || "Gagal menyimpan jadwal");
       }
       fetchManual();
     } catch {
-      alert("Gagal menyimpan jadwal");
+      toast.error("Gagal menyimpan jadwal");
     }
     setSavingCell("");
   };
@@ -127,7 +128,7 @@ export default function JadwalPage() {
     setAutoModal(true);
   };
   const saveAuto = async () => {
-    if (!autoForm.name) { alert("Nama jadwal harus diisi"); return; }
+    if (!autoForm.name) { toast.error("Nama jadwal harus diisi"); return; }
     setSavingAuto(true);
     try {
       const days = autoForm.days.map((kode, i) => ({ dayOfWeek: i, jamKerjaKode: kode })).filter(d => d.jamKerjaKode);
@@ -138,15 +139,19 @@ export default function JadwalPage() {
         body: JSON.stringify(body),
       });
       const r = await res.json();
-      if (r.success) { setAutoModal(false); fetchAuto(); }
-      else alert("Gagal: " + (r.error || ""));
-    } catch { alert("Gagal menyimpan"); }
+      if (r.success) { setAutoModal(false); fetchAuto(); toast.success(editAutoId ? "Jadwal otomatis berhasil diupdate" : "Jadwal otomatis berhasil ditambahkan"); }
+      else toast.error(r.error || "Gagal menyimpan jadwal");
+    } catch { toast.error("Gagal menyimpan jadwal"); }
     setSavingAuto(false);
   };
   const deleteAuto = async (id: string) => {
     if (!confirm("Hapus jadwal ini?")) return;
-    try { await fetch(`/api/jadwal-auto?id=${id}`, { method: "DELETE" }); fetchAuto(); }
-    catch { alert("Gagal"); }
+    try {
+      const res = await fetch(`/api/jadwal-auto?id=${id}`, { method: "DELETE" });
+      const r = await res.json();
+      if (r.success) { fetchAuto(); toast.success("Jadwal otomatis berhasil dihapus"); }
+      else toast.error(r.error || "Gagal menghapus jadwal");
+    } catch { toast.error("Gagal menghapus jadwal"); }
   };
   const toggleEmployee = (pin: string) => {
     setAutoForm(p => ({ ...p, employees: p.employees.includes(pin) ? p.employees.filter(e => e !== pin) : [...p.employees, pin] }));
@@ -202,7 +207,7 @@ export default function JadwalPage() {
           if (c0 === "no" && String(r[2] || "").trim().toLowerCase() === "name" && headerIdx === -1) headerIdx = idx;
         });
         if (!startDate || headerIdx === -1) {
-          alert("Format file tidak dikenali. Gunakan format Timesheet (No/ID/Name + kolom tanggal).");
+          toast.error("Format file tidak dikenali. Gunakan format Timesheet (No/ID/Name + kolom tanggal).");
           return;
         }
         const year = parseInt(startDate.slice(0, 4));
@@ -226,16 +231,16 @@ export default function JadwalPage() {
             count++;
           }
         }
-        if (batch.length === 0) { alert("Tidak ada data valid di Excel"); return; }
+        if (batch.length === 0) { toast.error("Tidak ada data valid di Excel"); return; }
         const res = await fetch("/api/jadwal-manual", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "batch", data: batch }),
         });
         const result = await res.json();
-        if (result.success) { alert(`${count} jadwal berhasil diimport`); fetchManual(); }
-        else alert("Gagal: " + (result.error || ""));
-      } catch { alert("Gagal membaca file Excel"); }
+        if (result.success) { toast.success(`${count} jadwal berhasil diimport`); fetchManual(); }
+        else toast.error(result.error || "Gagal import jadwal");
+      } catch { toast.error("Gagal membaca file Excel"); }
     };
     reader.readAsArrayBuffer(file);
     e.target.value = "";

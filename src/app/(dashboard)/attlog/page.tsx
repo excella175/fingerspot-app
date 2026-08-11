@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
+import toast from "react-hot-toast";
 import { formatDateTime, getVerifyMethod, getStatusScan } from "@/lib/utils";
 import { Download, Search, ChevronLeft, ChevronRight, Fingerprint, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -100,8 +101,8 @@ export default function AttlogPage() {
   // Chunked fetch from device
   const handleFetchFromDevice = async () => {
     const { from, to } = getDateRange();
-    if (!from || !to) { alert("Pilih tanggal dulu"); return; }
-    if (!deviceCloudId) { alert("Pilih mesin dulu"); return; }
+    if (!from || !to) { toast.error("Pilih tanggal dulu"); return; }
+    if (!deviceCloudId) { toast.error("Pilih mesin dulu"); return; }
 
     const start = new Date(from);
     const end = new Date(to);
@@ -124,7 +125,8 @@ export default function AttlogPage() {
       setFetchProgress("Memproses...");
       const r = await callChunk(from, to);
       setFetchProgress(r.success ? "✅ Selesai!" : "❌ Gagal: " + (r.error || ""));
-      if (r.success) setTimeout(fetchData, 2000);
+      if (r.success) { toast.success("Data absensi berhasil ditarik dari mesin"); setTimeout(fetchData, 2000); }
+      else toast.error(r.error || "Gagal menarik data dari mesin");
     } else {
       // Split into 2-day chunks
       let successCount = 0;
@@ -152,7 +154,8 @@ export default function AttlogPage() {
       }
 
       setFetchProgress(`✅ ${successCount} sukses${failCount ? `, ${failCount} gagal` : ""}`);
-      if (successCount > 0) setTimeout(fetchData, 2000);
+      if (successCount > 0) { toast.success("Data absensi berhasil ditarik dari mesin"); setTimeout(fetchData, 2000); }
+      if (failCount > 0) toast.error(`${failCount} bagian gagal ditarik`);
     }
 
     setTimeout(() => { setFetching(false); setFetchProgress(""); }, 3000);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import { Briefcase, Plus, Pencil, Trash2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -66,9 +67,9 @@ export default function JamKerjaPage() {
   };
 
   const handleSave = async () => {
-    if (!form.kode || !form.name || !form.aturanKode) { alert("Kode, Nama, dan Aturan harus diisi"); return; }
-    if (form.type === "tetap" && (!form.startTime || !form.endTime)) { alert("Jam mulai dan selesai harus diisi"); return; }
-    if (form.type === "fleksibel" && (!form.maxDuration || !form.cutoffStart || !form.cutoffEnd)) { alert("Durasi maksimal dan cutoff harus diisi"); return; }
+    if (!form.kode || !form.name || !form.aturanKode) { toast.error("Kode, Nama, dan Aturan harus diisi"); return; }
+    if (form.type === "tetap" && (!form.startTime || !form.endTime)) { toast.error("Jam mulai dan selesai harus diisi"); return; }
+    if (form.type === "fleksibel" && (!form.maxDuration || !form.cutoffStart || !form.cutoffEnd)) { toast.error("Durasi maksimal dan cutoff harus diisi"); return; }
     setSaving(true);
     try {
       const isEdit = modal?.item;
@@ -78,9 +79,9 @@ export default function JamKerjaPage() {
         body: JSON.stringify(form),
       });
       const r = await res.json();
-      if (r.success) { setModal(null); fetchData(); }
-      else alert("Gagal: " + (r.error || ""));
-    } catch { alert("Gagal menyimpan"); }
+      if (r.success) { setModal(null); fetchData(); toast.success(isEdit ? "Jam kerja berhasil diupdate" : "Jam kerja berhasil ditambahkan"); }
+      else toast.error(r.error || "Gagal menyimpan jam kerja");
+    } catch { toast.error("Gagal menyimpan jam kerja"); }
     setSaving(false);
   };
 
@@ -89,9 +90,9 @@ export default function JamKerjaPage() {
     try {
       const res = await fetch(`/api/jam-kerja?id=${item.id}`, { method: "DELETE" });
       const r = await res.json();
-      if (r.success) fetchData();
-      else alert("Gagal: " + (r.error || ""));
-    } catch { alert("Gagal menghapus"); }
+      if (r.success) { fetchData(); toast.success("Jam kerja berhasil dihapus"); }
+      else toast.error(r.error || "Gagal menghapus jam kerja");
+    } catch { toast.error("Gagal menghapus jam kerja"); }
   };
 
   const getAturanName = (kode: string) => aturan.find(a => a.kode === kode)?.name || kode;

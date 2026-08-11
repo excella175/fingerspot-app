@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import {
   MonitorCog,
   RefreshCw,
@@ -60,6 +61,8 @@ export default function DevicesPage() {
   const [adding, setAdding] = useState(false);
 
   const [manageTarget, setManageTarget] = useState<Device | null>(null);
+  const [editName, setEditName] = useState("");
+  const [savingName, setSavingName] = useState(false);
   const [deviceData, setDeviceData] = useState<Record<string, any>>({});
   const [loadingInfo, setLoadingInfo] = useState(false);
   const [actionLoading, setActionLoading] = useState(""); // "<cloudId>:<action>"
@@ -79,7 +82,7 @@ export default function DevicesPage() {
   useEffect(() => { fetchDevices(); }, []);
 
   const handleAddDevice = async () => {
-    if (!newCloudId.trim()) { alert("Cloud ID wajib diisi"); return; }
+    if (!newCloudId.trim()) { toast.error("Cloud ID wajib diisi"); return; }
     setAdding(true);
     try {
       const res = await fetch("/api/device", {
@@ -91,12 +94,15 @@ export default function DevicesPage() {
       if (data.success) {
         setNewCloudId(""); setNewName("");
         setResult({ type: "success", message: "Mesin berhasil ditambahkan" });
+        toast.success("Mesin berhasil ditambahkan");
         await fetchDevices();
       } else {
         setResult({ type: "error", message: data.error || "Gagal menambahkan" });
+        toast.error(data.error || "Gagal menambahkan mesin");
       }
     } catch {
       setResult({ type: "error", message: "Gagal menambahkan mesin" });
+      toast.error("Gagal menambahkan mesin");
     }
     setAdding(false);
   };
@@ -108,13 +114,44 @@ export default function DevicesPage() {
       const data = await res.json();
       if (data.success) {
         setResult({ type: "success", message: "Mesin berhasil dihapus" });
+        toast.success("Mesin berhasil dihapus");
         await fetchDevices();
       } else {
         setResult({ type: "error", message: data.error || "Gagal menghapus" });
+        toast.error(data.error || "Gagal menghapus mesin");
       }
     } catch {
       setResult({ type: "error", message: "Gagal menghapus mesin" });
+      toast.error("Gagal menghapus mesin");
     }
+  };
+
+  const handleSaveName = async () => {
+    if (!manageTarget) return;
+    const name = editName.trim();
+    if (!name) { toast.error("Nama mesin tidak boleh kosong"); return; }
+    setSavingName(true);
+    try {
+      const res = await fetch("/api/device", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: manageTarget.id, name }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setResult({ type: "success", message: "Nama mesin berhasil diubah" });
+        toast.success("Nama mesin berhasil diubah");
+        setManageTarget({ ...manageTarget, name: data.data.name });
+        await fetchDevices();
+      } else {
+        setResult({ type: "error", message: data.error || "Gagal mengubah nama" });
+        toast.error(data.error || "Gagal mengubah nama mesin");
+      }
+    } catch {
+      setResult({ type: "error", message: "Gagal mengubah nama mesin" });
+      toast.error("Gagal mengubah nama mesin");
+    }
+    setSavingName(false);
   };
 
   const callFingerspot = async (cloudId: string, command: string, params: Record<string, any> = {}) => {
@@ -134,11 +171,14 @@ export default function DevicesPage() {
       if (data.success) {
         setDeviceData(p => ({ ...p, [cloudId]: data.data?.data || data.data }));
         setResult({ type: "success", message: `Info perangkat ${name} berhasil diambil` });
+        toast.success(`Data perangkat ${name} berhasil diambil`);
       } else {
         setResult({ type: "error", message: data.error || "Gagal mengambil data" });
+        toast.error(data.error || "Gagal mengambil data perangkat");
       }
     } catch {
       setResult({ type: "error", message: "Gagal mengirim perintah" });
+      toast.error("Gagal mengirim perintah");
     }
     setLoadingInfo(false);
   };
@@ -150,11 +190,14 @@ export default function DevicesPage() {
       const data = await callFingerspot(cloudId, "set_time", { timezone: timezones[cloudId] || "Asia/Jakarta" });
       if (data.success) {
         setResult({ type: "success", message: `Perintah set_time berhasil dikirim ke ${name}` });
+        toast.success(`Zona waktu ${name} berhasil diatur`);
       } else {
         setResult({ type: "error", message: data.error || "Gagal" });
+        toast.error(data.error || "Gagal mengatur zona waktu");
       }
     } catch {
       setResult({ type: "error", message: "Gagal mengirim perintah" });
+      toast.error("Gagal mengirim perintah set_time");
     }
     setActionLoading("");
   };
@@ -167,11 +210,14 @@ export default function DevicesPage() {
       const data = await callFingerspot(cloudId, "restart_device");
       if (data.success) {
         setResult({ type: "success", message: `Perintah restart berhasil dikirim ke ${name}` });
+        toast.success(`Perintah restart berhasil dikirim ke ${name}`);
       } else {
         setResult({ type: "error", message: data.error || "Gagal" });
+        toast.error(data.error || "Gagal mengirim perintah restart");
       }
     } catch {
       setResult({ type: "error", message: "Gagal mengirim perintah" });
+      toast.error("Gagal mengirim perintah restart");
     }
     setActionLoading("");
   };
@@ -291,7 +337,7 @@ export default function DevicesPage() {
                   </div>
 
                   <button
-                    onClick={() => { setManageTarget(device); setResult(null); }}
+                    onClick={() => { setManageTarget(device); setEditName(device.name); setResult(null); }}
                     className="inline-flex flex-shrink-0 items-center gap-1 rounded-lg bg-indigo-50 px-3 py-1.5 text-[12px] font-medium text-indigo-600 transition-colors hover:bg-indigo-100"
                   >
                     <Settings2 className="h-3.5 w-3.5" />
@@ -366,6 +412,26 @@ export default function DevicesPage() {
                       {" · "}Sinkron: {formatDateTime(manageTarget.lastSync)}
                     </DialogDescription>
                   </div>
+                </div>
+                <div className="mt-1 flex items-end gap-2">
+                  <div className="flex-1">
+                    <label className="block text-[12px] font-medium text-gray-500">Nama Mesin</label>
+                    <input
+                      type="text"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      placeholder="Nama mesin"
+                      className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-[13px] focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                    />
+                  </div>
+                  <button
+                    onClick={handleSaveName}
+                    disabled={savingName}
+                    className="inline-flex flex-shrink-0 items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2 text-[12px] font-medium text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
+                  >
+                    {savingName ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                    Simpan Nama
+                  </button>
                 </div>
               </DialogHeader>
 

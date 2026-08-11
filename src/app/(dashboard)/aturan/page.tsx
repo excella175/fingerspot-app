@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import { Gavel, Plus, Pencil, Trash2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -48,7 +49,7 @@ export default function AturanPage() {
   };
 
   const handleSave = async () => {
-    if (!form.kode || !form.name) { alert("Kode dan Nama harus diisi"); return; }
+    if (!form.kode || !form.name) { toast.error("Kode dan Nama harus diisi"); return; }
     setSaving(true);
     try {
       const isEdit = modal?.item;
@@ -58,9 +59,9 @@ export default function AturanPage() {
         body: JSON.stringify(form),
       });
       const r = await res.json();
-      if (r.success) { setModal(null); fetchData(); }
-      else alert("Gagal: " + (r.error || ""));
-    } catch { alert("Gagal menyimpan"); }
+      if (r.success) { setModal(null); fetchData(); toast.success(isEdit ? "Aturan berhasil diupdate" : "Aturan berhasil ditambahkan"); }
+      else toast.error(r.error || "Gagal menyimpan aturan");
+    } catch { toast.error("Gagal menyimpan aturan"); }
     setSaving(false);
   };
 
@@ -69,9 +70,9 @@ export default function AturanPage() {
     try {
       const res = await fetch(`/api/aturan?id=${item.id}`, { method: "DELETE" });
       const r = await res.json();
-      if (r.success) fetchData();
-      else alert("Gagal: " + (r.error || ""));
-    } catch { alert("Gagal menghapus"); }
+      if (r.success) { fetchData(); toast.success("Aturan berhasil dihapus"); }
+      else toast.error(r.error || "Gagal menghapus aturan");
+    } catch { toast.error("Gagal menghapus aturan"); }
   };
 
   return (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import toast from "react-hot-toast";
 import { Search, CalendarClock, FileSpreadsheet, FileText } from "lucide-react";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
@@ -272,8 +273,9 @@ export default function ReportDetailPage() {
       a.download = `laporan-detail_${dr.from}_${dr.to}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
+      toast.success("Laporan Excel berhasil diunduh");
     } catch {
-      alert("Gagal export Excel");
+      toast.error("Gagal export Excel");
     }
     setExporting(null);
   };
@@ -331,8 +333,9 @@ export default function ReportDetailPage() {
       });
 
       doc.save(`laporan-detail_${dr.from}_${dr.to}.pdf`);
+      toast.success("Laporan PDF berhasil diunduh");
     } catch {
-      alert("Gagal export PDF");
+      toast.error("Gagal export PDF");
     }
     setExporting(null);
   };
@@ -442,9 +445,9 @@ export default function ReportDetailPage() {
                   const dr = getDateRange();
                   const res = await fetch(`/api/reports?command=generate&from=${dr.from}&to=${dr.to}`);
                   const d = await res.json();
-                  if (d.success) { alert("Laporan berhasil digenerate untuk " + dr.from + " sd " + dr.to); fetchReport(); }
-                  else alert("Gagal: " + (d.error || ""));
-                } catch { alert("Gagal generate laporan"); }
+                  if (d.success) { toast.success(`Laporan berhasil digenerate untuk ${dr.from} s/d ${dr.to}`); fetchReport(); }
+                  else toast.error(d.error || "Gagal generate laporan");
+                } catch { toast.error("Gagal generate laporan"); }
                 setGenerating(false);
               }}
               disabled={generating}

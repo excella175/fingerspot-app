@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import toast from "react-hot-toast";
 import {
   Search, RefreshCw, Users, ChevronLeft, ChevronRight,
   Pencil, Trash2, Upload, Download, Plus,
@@ -130,7 +131,7 @@ export default function UserinfoPage() {
 
   // ---- Sync from device ----
   const handleSync = async () => {
-    if (!syncDeviceId) { alert("Tidak ada mesin terdaftar. Tambah mesin di halaman Perangkat dulu."); return; }
+    if (!syncDeviceId) { toast.error("Tidak ada mesin terdaftar. Tambah mesin di halaman Perangkat dulu."); return; }
     setSyncing(true);
     setSyncStatus("Mengirim perintah ke mesin...");
     try {
@@ -208,12 +209,15 @@ export default function UserinfoPage() {
       const result = await res.json();
       if (result.success) {
         setEditStatus("✅ Tersimpan di database");
+        toast.success("Perubahan tersimpan");
         fetchData();
       } else {
         setEditStatus("❌ " + (result.error || "Gagal"));
+        toast.error(result.error || "Gagal menyimpan perubahan");
       }
     } catch {
       setEditStatus("❌ Gagal menyimpan");
+      toast.error("Gagal menyimpan perubahan");
     }
     setSaving(false);
   };
@@ -224,12 +228,12 @@ export default function UserinfoPage() {
     if (!file) return;
 
     if (!file.type.startsWith("image/jpeg") && !file.type.startsWith("image/png")) {
-      alert("Hanya file JPEG/PNG yang diizinkan");
+      toast.error("Hanya file JPEG/PNG yang diizinkan");
       return;
     }
 
     if (file.size > 100 * 1024) {
-      alert("Foto maksimal 100KB");
+      toast.error("Foto maksimal 100KB");
       return;
     }
 
@@ -255,6 +259,7 @@ export default function UserinfoPage() {
         const result = await res.json();
         if (result.success) {
           setSelected((prev) => { const n = new Set(prev); n.delete(pins[0]); return n; });
+          toast.success("User berhasil dihapus");
           fetchData();
         }
       } catch {}
@@ -274,9 +279,14 @@ export default function UserinfoPage() {
       if (result.success) {
         setSelected(new Set());
         setPage(1);
+        toast.success(`${pins.length} user berhasil dihapus`);
         fetchData();
+      } else {
+        toast.error(result.error || "Gagal menghapus user");
       }
-    } catch {}
+    } catch {
+      toast.error("Gagal menghapus user");
+    }
     setDeletingPins((prev) => {
       const n = new Set(prev);
       pins.forEach((p) => n.delete(p));
@@ -305,12 +315,13 @@ export default function UserinfoPage() {
     }
     setBulkSyncing(false);
     setSyncStatus(`✅ ${success} user dikirim ke mesin${failed ? `, ${failed} gagal` : ""}`);
+    toast.success(`${success} user berhasil dikirim ke mesin`);
     setTimeout(() => setSyncStatus(""), 5000);
   };
 
   // ---- Add user ----
   const handleAdd = async () => {
-    if (!addPin.trim() || !addName.trim()) return;
+    if (!addPin.trim() || !addName.trim()) { toast.error("PIN dan nama harus diisi"); return; }
     setAdding(true);
     setAddStatus("Mengirim ke mesin...");
     try {
@@ -328,13 +339,16 @@ export default function UserinfoPage() {
       const result = await res.json();
       if (result.success) {
         setAddStatus("✅ Perintah terkirim! Tunggu webhook, data akan muncul setelah sinkron.");
+        toast.success("Perintah tambah user berhasil dikirim ke mesin");
         setAddPin(""); setAddName(""); setAddPassword(""); setAddRfid("");
         setTimeout(() => { setShowAdd(false); setAddStatus(""); }, 3000);
       } else {
         setAddStatus("❌ " + (result.message || result.error || "Gagal"));
+        toast.error(result.message || result.error || "Gagal menambahkan user");
       }
     } catch {
       setAddStatus("❌ Gagal mengirim perintah");
+      toast.error("Gagal mengirim perintah");
     }
     setAdding(false);
   };
@@ -371,9 +385,11 @@ export default function UserinfoPage() {
         setPreviewFile(file);
       } else {
         setImportStatus("❌ " + (result.error || "Gagal membaca file"));
+        toast.error(result.error || "Gagal membaca file Excel");
       }
     } catch {
       setImportStatus("❌ Gagal membaca file");
+      toast.error("Gagal membaca file Excel");
     }
     setImporting(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -391,9 +407,15 @@ export default function UserinfoPage() {
       setImportStatus(result.success
         ? `✅ ${result.message}`
         : "❌ " + (result.error || "Gagal import"));
-      if (result.success) { setPreview(null); setPage(1); fetchData(); }
+      if (result.success) {
+        setPreview(null); setPage(1); fetchData();
+        toast.success(result.message || "Import Excel berhasil");
+      } else {
+        toast.error(result.error || "Gagal import file");
+      }
     } catch {
       setImportStatus("❌ Gagal import file");
+      toast.error("Gagal import file Excel");
     }
     setImporting(false);
   };

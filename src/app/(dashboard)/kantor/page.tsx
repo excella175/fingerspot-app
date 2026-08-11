@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import toast from "react-hot-toast";
 import { Building2, Plus, Search, Pencil, Trash2, MapPin, Users as UsersIcon, Loader2, X, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -93,11 +94,14 @@ export default function KantorPage() {
       if (d.success) {
         setEditing(null);
         fetchKantors();
+        toast.success(editing.id ? "Kantor berhasil diupdate" : "Kantor berhasil ditambahkan");
       } else {
         setEditError(d.error || "Gagal menyimpan");
+        toast.error(d.error || "Gagal menyimpan kantor");
       }
     } catch {
       setEditError("Gagal menyimpan");
+      toast.error("Gagal menyimpan kantor");
     }
     setSaving(false);
   };
@@ -119,6 +123,7 @@ export default function KantorPage() {
       const d = await res.json();
       if (d.success) {
         fetchKantors();
+        toast.success("Kantor berhasil dihapus");
         return;
       }
       if (d.blocked) {
@@ -178,8 +183,10 @@ export default function KantorPage() {
 
       setDeleting(null);
       fetchKantors();
+      toast.success("Kantor berhasil dihapus");
     } catch {
       setDeleteError("Terjadi kesalahan");
+      toast.error("Gagal menghapus kantor");
     }
     setMoving(false);
   };
@@ -192,11 +199,12 @@ export default function KantorPage() {
       const d = await res.json();
       if (d.success) {
         fetchKantors();
+        toast.success("Jabatan berhasil dihapus");
       } else {
-        alert(d.error || "Gagal menghapus jabatan");
+        toast.error(d.error || "Gagal menghapus jabatan");
       }
     } catch {
-      alert("Gagal menghapus jabatan");
+      toast.error("Gagal menghapus jabatan");
     }
     setJabatanBusy(null);
   };
@@ -216,11 +224,12 @@ export default function KantorPage() {
       if (d.success) {
         setRenameJabatan(null);
         fetchKantors();
+        toast.success("Jabatan berhasil diubah");
       } else {
-        alert(d.error || "Gagal mengubah jabatan");
+        toast.error(d.error || "Gagal mengubah jabatan");
       }
     } catch {
-      alert("Gagal mengubah jabatan");
+      toast.error("Gagal mengubah jabatan");
     }
   };
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import toast from "react-hot-toast";
 import {
   CalendarCheck,
   FileSpreadsheet,
@@ -347,9 +348,9 @@ export default function AttendanceReportPage() {
                     const dr = getDateRange();
                     const res = await fetch(`/api/reports?command=generate&from=${dr.from}&to=${dr.to}`);
                     const d = await res.json();
-                    if (d.success) { alert("Laporan berhasil digenerate untuk " + dr.from + " sd " + dr.to); fetchReport(); }
-                    else alert("Gagal: " + (d.error || ""));
-                  } catch { alert("Gagal generate laporan"); }
+                    if (d.success) { toast.success(`Laporan berhasil digenerate untuk ${dr.from} s/d ${dr.to}`); fetchReport(); }
+                    else toast.error(d.error || "Gagal generate laporan");
+                  } catch { toast.error("Gagal generate laporan"); }
                   setGenerating(false);
                 }}
                 disabled={generating}

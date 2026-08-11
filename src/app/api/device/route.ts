@@ -36,6 +36,27 @@ export async function POST(request: NextRequest) {
   }
 }
 
+export async function PATCH(request: NextRequest) {
+  try {
+    const { id, name } = await request.json();
+    if (!id) return NextResponse.json({ success: false, error: "ID wajib" }, { status: 400 });
+
+    const device = await prisma.device.findUnique({ where: { id } });
+    if (!device) return NextResponse.json({ success: false, error: "Mesin tidak ditemukan" }, { status: 404 });
+
+    const updated = await prisma.device.update({
+      where: { id },
+      data: {
+        name: String(name || "").trim() || `Mesin ${device.cloudId}`,
+      },
+    });
+
+    return NextResponse.json({ success: true, data: updated });
+  } catch (error) {
+    return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
+  }
+}
+
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
