@@ -1,9 +1,10 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { formatDateTime, getStatusBadge } from "@/lib/utils";
 import { Eye, Webhook, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { PageHeader } from "@/components/page-header";
 
 interface WebhookLogEntry {
   id: string;
@@ -81,17 +82,7 @@ export default function WebhookLogsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 to-pink-600 shadow-sm shadow-rose-200">
-          <Webhook className="h-5 w-5 text-white" />
-        </div>
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Riwayat Webhook</h1>
-          <p className="text-[13px] text-gray-400">
-            Riwayat data yang diterima dari mesin absensi via webhook
-          </p>
-        </div>
-      </div>
+      <PageHeader icon={Webhook} title="Riwayat Webhook" description="Riwayat data yang diterima dari mesin absensi via webhook" gradient="rose" />
 
       <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-end gap-3">
@@ -100,7 +91,7 @@ export default function WebhookLogsPage() {
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
-              className="mt-1.5 block rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-[13px] focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="mt-1.5 block rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-[13px] focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
             >
               <option value="">Semua</option>
               <option value="attlog">Realtime Attlog</option>
@@ -183,7 +174,7 @@ export default function WebhookLogsPage() {
                     <td className="px-4 py-3">
                       <Link
                         href={`/payload?id=${row.id}&source=webhook`}
-                        className="inline-flex items-center gap-1 rounded-lg p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                        className="inline-flex items-center gap-1 rounded-lg p-1.5 text-gray-400 hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
                       >
                         <Eye className="h-4 w-4" />
                       </Link>

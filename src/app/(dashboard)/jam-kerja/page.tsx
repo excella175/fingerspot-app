@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/page-header";
 
 interface AturanItem { id: string; kode: string; name: string; }
 interface JamKerjaItem {
@@ -100,15 +101,7 @@ export default function JamKerjaPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-sky-600 shadow-sm shadow-cyan-200">
-          <Briefcase className="h-5 w-5 text-white" />
-        </div>
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Jam Kerja</h1>
-          <p className="text-[13px] text-gray-400">Definisi jam kerja tetap dan fleksibel</p>
-        </div>
-      </div>
+      <PageHeader icon={Briefcase} title="Jam Kerja" description="Definisi jam kerja tetap dan fleksibel" gradient="cyan" />
 
       <Card>
         <CardContent className="p-5 pt-5">

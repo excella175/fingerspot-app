@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { DateRangePicker, getDateRange } from "@/components/date-range-picker";
+import { PageHeader } from "@/components/page-header";
 
 interface ReportEntry {
   employeePin: string;
@@ -345,17 +346,7 @@ export default function ReportDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-sm shadow-violet-200">
-          <CalendarClock className="h-5 w-5 text-white" />
-        </div>
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Laporan Detail</h1>
-          <p className="text-[13px] text-gray-400">
-            Perincian absensi harian per karyawan
-          </p>
-        </div>
-      </div>
+      <PageHeader icon={CalendarClock} title="Laporan Detail" description="Perincian absensi harian per karyawan" gradient="violet" />
 
       <Card>
         <CardContent className="p-5">

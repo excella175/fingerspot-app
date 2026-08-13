@@ -44,7 +44,7 @@ export default function LoginPage() {
               <FingerprintIcon className="h-8 w-8 text-white" />
               <span className="absolute -right-1 -top-1 h-3.5 w-3.5 rounded-full border-2 border-white bg-emerald-400" />
             </div>
-            <h1 className="text-xl font-bold tracking-tight text-gray-900">Fingerspot</h1>
+            <h1 className="font-heading text-2xl font-bold tracking-tight text-gray-900">Fingerspot</h1>
             <p className="mt-1.5 text-[13px] text-gray-400">
               Masuk untuk mengelola dashboard absensi
             </p>

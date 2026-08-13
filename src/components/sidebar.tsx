@@ -88,8 +88,8 @@ export function Sidebar() {
 
   return (
     <aside className="fixed left-0 top-0 z-40 flex h-screen w-64 flex-col border-r border-gray-200/50 bg-gradient-to-b from-white to-gray-50/50">
-      <div className="flex h-16 items-center gap-3 border-b border-gray-200/50 bg-gradient-to-r from-blue-600 to-indigo-600 px-6">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/20 shadow-sm backdrop-blur-sm">
+      <div className="flex h-16 items-center gap-3 border-b border-gray-200/50 bg-gradient-to-r from-slate-900 to-indigo-600 px-6">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/15 shadow-sm ring-1 ring-white/20 backdrop-blur-sm">
           <FingerprintIcon className="h-5 w-5 text-white" />
         </div>
         <div>
@@ -132,7 +132,7 @@ export function Sidebar() {
                           className={cn(
                             "flex items-center gap-2.5 rounded-lg px-3 py-2 text-[12.5px] font-medium transition-all",
                             active
-                              ? "bg-muted text-foreground"
+                              ? "bg-indigo-50 font-semibold text-indigo-700"
                               : "text-muted-foreground hover:bg-muted hover:text-foreground"
                           )}
                         >
@@ -154,11 +154,13 @@ export function Sidebar() {
               href={item.href}
               className={cn(
                 buttonVariants({ variant: active ? "secondary" : "ghost" }),
-                "w-full justify-start gap-3"
+                "w-full justify-start gap-3",
+                active &&
+                  "bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-800"
               )}
             >
               <item.icon
-                className={cn("h-[18px] w-[18px] flex-shrink-0", active && "text-blue-600")}
+                className={cn("h-[18px] w-[18px] flex-shrink-0", active && "text-indigo-600")}
               />
               {item.name}
             </Link>

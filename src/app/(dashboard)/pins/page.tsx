@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { formatDateTime } from "@/lib/utils";
 import { ListOrdered, ChevronLeft, ChevronRight } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
 
 interface PinEntry {
   id: string;
@@ -39,17 +40,7 @@ export default function PinsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-sky-600 shadow-sm shadow-cyan-200">
-        <ListOrdered className="h-5 w-5 text-white" />
-        </div>
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Daftar PIN</h1>
-          <p className="text-[13px] text-gray-400">
-            Daftar PIN / User ID dari mesin absensi
-          </p>
-        </div>
-      </div>
+      <PageHeader icon={ListOrdered} title="Daftar PIN" description="Daftar PIN / User ID dari mesin absensi" gradient="cyan" />
 
       <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
         <div className="overflow-x-auto">

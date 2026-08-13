@@ -26,6 +26,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { PageHeader } from "@/components/page-header";
 
 type Device = {
   id: string;
@@ -232,17 +233,7 @@ export default function DevicesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-sm shadow-indigo-200">
-          <MonitorCog className="h-5 w-5 text-white" />
-        </div>
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Perangkat</h1>
-          <p className="text-[13px] text-gray-400">
-            Kelola mesin absensi dan kirim perintah langsung ke perangkat
-          </p>
-        </div>
-      </div>
+      <PageHeader icon={MonitorCog} title="Perangkat" description="Kelola mesin absensi dan kirim perintah langsung ke perangkat" gradient="indigo" />
 
       {result && (
         <div
@@ -282,8 +273,8 @@ export default function DevicesPage() {
           </div>
         </div>
         <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-          <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-blue-50">
-            <Activity className="h-5 w-5 text-blue-600" />
+          <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-indigo-50">
+            <Activity className="h-5 w-5 text-indigo-600" />
           </div>
           <div>
             <p className="text-[12px] font-medium text-gray-400">Sinkron Terakhir</p>
@@ -371,14 +362,14 @@ export default function DevicesPage() {
             value={newCloudId}
             onChange={(e) => setNewCloudId(e.target.value)}
             placeholder="Cloud ID (dari portal Fingerspot)"
-            className="min-w-[220px] flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-[13px] font-mono focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="min-w-[220px] flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-[13px] font-mono focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           />
           <input
             type="text"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             placeholder="Nama mesin (opsional, misal: Kantor Pusat)"
-            className="min-w-[200px] flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="min-w-[200px] flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-[13px] focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           />
           <button
             onClick={handleAddDevice}
@@ -439,15 +430,15 @@ export default function DevicesPage() {
               <div className="rounded-xl border border-gray-100 bg-gray-50/40 p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100">
-                      <Info className="h-4 w-4 text-blue-600" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100">
+                      <Info className="h-4 w-4 text-indigo-600" />
                     </div>
                     <h3 className="text-[13.5px] font-semibold text-gray-900">Info Perangkat</h3>
                   </div>
                   <button
                     onClick={() => handleGetDevice(manageTarget.cloudId, manageTarget.name)}
                     disabled={loadingInfo}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-[12px] font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-[12px] font-medium text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
                   >
                     {loadingInfo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
                     {loadingInfo ? "Memuat..." : "Ambil"}
@@ -485,7 +476,7 @@ export default function DevicesPage() {
                   <select
                     value={timezones[manageTarget.cloudId] || "Asia/Jakarta"}
                     onChange={(e) => setTimezones(p => ({ ...p, [manageTarget.cloudId]: e.target.value }))}
-                    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-[13px] focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   >
                     <option value="Asia/Jakarta">WIB (Asia/Jakarta)</option>
                     <option value="Asia/Makassar">WITA (Asia/Makassar)</option>

@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/page-header";
 
 interface AturanEntry {
   id: string;
@@ -77,15 +78,7 @@ export default function AturanPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-sm shadow-amber-200">
-          <Gavel className="h-5 w-5 text-white" />
-        </div>
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Aturan Jam Kerja</h1>
-          <p className="text-[13px] text-gray-400">Toleransi terlambat, pulang cepat, dan batas absensi</p>
-        </div>
-      </div>
+      <PageHeader icon={Gavel} title="Aturan Jam Kerja" description="Toleransi terlambat, pulang cepat, dan batas absensi" gradient="amber" />
 
       <Card>
         <CardContent className="p-5 pt-5">

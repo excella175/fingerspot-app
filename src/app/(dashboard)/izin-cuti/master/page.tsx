@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { Plus, Pencil, Trash2, Search, ClipboardList } from "lucide-react";
@@ -133,7 +133,7 @@ export default function MasterIzinCutiPage() {
             <ClipboardList className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Master Izin & Cuti</h1>
+            <h1 className="font-heading text-xl font-bold tracking-tight text-gray-900">Master Izin & Cuti</h1>
             <p className="text-sm text-gray-500">Kelola jenis izin dan cuti karyawan</p>
           </div>
         </div>
@@ -199,7 +199,7 @@ export default function MasterIzinCutiPage() {
                   <TableCell className="capitalize">{item.jenisKelamin}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(item)} className="text-muted-foreground hover:text-blue-600 hover:bg-blue-50">
+                      <Button variant="ghost" size="icon" onClick={() => openEdit(item)} className="text-muted-foreground hover:text-indigo-600 hover:bg-indigo-50">
                         <Pencil className="h-4 w-4" />
                       </Button>
                       <Button variant="ghost" size="icon" onClick={() => handleDelete(item.id)} className="text-muted-foreground hover:text-red-600 hover:bg-red-50">

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DateRangePicker, getDateRange } from "@/components/date-range-picker";
+import { PageHeader } from "@/components/page-header";
 
 interface AttlogEntry {
   id: string;
@@ -167,15 +168,7 @@ export default function AttlogPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-sm shadow-blue-200">
-          <Fingerprint className="h-5 w-5 text-white" />
-        </div>
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Data Absensi</h1>
-          <p className="text-[13px] text-gray-400">Riwayat scan absensi dari mesin</p>
-        </div>
-      </div>
+      <PageHeader icon={Fingerprint} title="Data Absensi" description="Riwayat scan absensi dari mesin" />
 
       <Card>
         <CardContent className="p-5">

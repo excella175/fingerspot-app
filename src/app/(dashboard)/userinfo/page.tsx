@@ -434,7 +434,7 @@ export default function UserinfoPage() {
           <Users className="h-5 w-5 text-white" />
         </div>
         <div className="flex-1">
-          <h1 className="text-xl font-bold text-gray-900">Data User</h1>
+          <h1 className="font-heading text-xl font-bold tracking-tight text-gray-900">Data User</h1>
           <p className="text-[13px] text-gray-400">Data user dari mesin absensi</p>
         </div>
         <div className="flex items-center gap-2">
@@ -508,7 +508,7 @@ export default function UserinfoPage() {
 
       {/* Bulk action bar */}
       {selected.size > 0 && (
-        <div className="flex items-center justify-between rounded-2xl border border-blue-100 bg-blue-50/50 px-5 py-3">
+        <div className="flex items-center justify-between rounded-2xl border border-indigo-100 bg-indigo-50/50 px-5 py-3">
           <span className="text-[13px] font-medium text-blue-700">
             {selected.size} user terpilih
           </span>
@@ -694,7 +694,7 @@ export default function UserinfoPage() {
                     setEditKantorId(e.target.value);
                     setEditJabatanId("");
                   }}
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-[13px] focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-[13px] focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 >
                   <option value="">Tanpa Kantor</option>
                   {kantors.map((k) => (
@@ -708,7 +708,7 @@ export default function UserinfoPage() {
                   value={editJabatanId}
                   onChange={(e) => setEditJabatanId(e.target.value)}
                   disabled={!editKantorId}
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-[13px] focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-[13px] focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
                 >
                   <option value="">Tanpa Jabatan</option>
                   {kantors
@@ -791,7 +791,7 @@ export default function UserinfoPage() {
             <div>
               <label className="block text-[13px] font-medium text-muted-foreground mb-1">Privilege</label>
               <select value={addPrivilege} onChange={(e) => setAddPrivilege(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-[13px] focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500">
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-[13px] focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500">
                 <option value="1">User</option>
                 <option value="2">Admin</option>
                 <option value="3">Sub Admin</option>

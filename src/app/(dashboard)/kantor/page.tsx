@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useCallback } from "react";
 import toast from "react-hot-toast";
@@ -245,7 +245,7 @@ export default function KantorPage() {
           <Building2 className="h-5 w-5 text-white" />
         </div>
         <div className="flex-1">
-          <h1 className="text-xl font-bold text-gray-900">Kantor &amp; Jabatan</h1>
+          <h1 className="font-heading text-xl font-bold tracking-tight text-gray-900">Kantor &amp; Jabatan</h1>
           <p className="text-[13px] text-gray-400">Kelola kantor dan jabatan karyawan</p>
         </div>
         <Button onClick={() => { setEditing({ nama: "", alamat: "", jabatans: [] }); setEditError(""); }}>
@@ -514,7 +514,7 @@ export default function KantorPage() {
                 <select
                   value={reassigns[u.id] || ""}
                   onChange={(e) => setReassigns((prev) => ({ ...prev, [u.id]: e.target.value }))}
-                  className="mt-1.5 w-full rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[12.5px] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="mt-1.5 w-full rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[12.5px] focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 >
                   <option value="">Tanpa Jabatan</option>
                   {otherJabatans.map((j) => (

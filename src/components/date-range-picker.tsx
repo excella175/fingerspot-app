@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -50,7 +50,7 @@ export function DateRangePicker() {
           type="date"
           value={from}
           onChange={(e) => update(e.target.value, to)}
-          className="block rounded-xl border border-gray-200 bg-white px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="block rounded-xl border border-gray-200 bg-white px-3 py-2 text-[13px] focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
         />
       </div>
       <div>
@@ -59,7 +59,7 @@ export function DateRangePicker() {
           type="date"
           value={to}
           onChange={(e) => update(from, e.target.value)}
-          className="block rounded-xl border border-gray-200 bg-white px-3 py-2 text-[13px] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="block rounded-xl border border-gray-200 bg-white px-3 py-2 text-[13px] focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
         />
       </div>
     </div>

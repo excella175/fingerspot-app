@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/page-header";
 
 interface JamKerjaItem { id: string; kode: string; name: string; type: string; aturanKode: string; startTime?: string; endTime?: string; }
 interface UserItem { pin: string; name: string; }
@@ -248,15 +249,7 @@ export default function JadwalPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-sm shadow-indigo-200">
-          <CalendarDays className="h-5 w-5 text-white" />
-        </div>
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Jadwal</h1>
-          <p className="text-[13px] text-gray-400">Atur jadwal kerja karyawan</p>
-        </div>
-      </div>
+      <PageHeader icon={CalendarDays} title="Jadwal" description="Atur jadwal kerja karyawan" gradient="indigo" />
 
       <div className="flex gap-1 rounded-xl bg-gray-100 p-1 w-fit">
         <Button

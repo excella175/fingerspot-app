@@ -190,7 +190,7 @@ export default function RiwayatIzinCutiPage() {
             <CalendarClock className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Riwayat Izin & Cuti</h1>
+            <h1 className="font-heading text-xl font-bold tracking-tight text-gray-900">Riwayat Izin & Cuti</h1>
             <p className="text-sm text-gray-500">Daftar pengajuan izin dan cuti karyawan</p>
           </div>
         </div>

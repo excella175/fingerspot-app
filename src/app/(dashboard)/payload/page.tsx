@@ -121,7 +121,7 @@ function PayloadContent() {
         <FileJson className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Detail Payload</h1>
+            <h1 className="font-heading text-xl font-bold tracking-tight text-gray-900">Detail Payload</h1>
             <p className="text-[13px] text-gray-400">
               {source === "webhook" ? "Webhook" : "API"} - {data.command || data.type} - {formatDateTime(data.createdAt)}
             </p>
