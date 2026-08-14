@@ -3,9 +3,6 @@
 import { useEffect, useState, useCallback } from "react";
 import toast from "react-hot-toast";
 import { Search, CalendarClock, FileSpreadsheet, FileText } from "lucide-react";
-import * as XLSX from "xlsx";
-import jsPDF from "jspdf";
-import "jspdf-autotable";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -205,138 +202,30 @@ export default function ReportDetailPage() {
     { total: 0, H: 0, A: 0, I: 0, S: 0, C: 0, L: 0, TL: 0, other: 0 }
   );
 
-  const handleExportExcel = () => {
-    setExporting("excel");
+  const exportFile = async (format: "xlsx" | "pdf") => {
+    setExporting(format);
     try {
       const dr = getDateRange();
-      const aoa: any[][] = [];
-      const merges: any[] = [];
-
-      blocks.forEach((b) => {
-        const base = aoa.length;
-        aoa.push(["Laporan Fingerspot Solo"]);
-        merges.push({ s: { r: base + 0, c: 0 }, e: { r: base + 0, c: 12 } });
-        aoa.push([`${dr.from} s/d ${dr.to}`]);
-        merges.push({ s: { r: base + 1, c: 0 }, e: { r: base + 1, c: 12 } });
-        aoa.push([]);
-        aoa.push([]);
-        aoa.push(["Nama Karyawan", b.name, "", "", "", "", "", "", "Jabatan", b.jabatan]);
-        aoa.push(["ID/NIK", b.pin, "", "", "", "", "", "", "Kantor", b.kantor]);
-        aoa.push([]);
-        aoa.push([]);
-        aoa.push(["Tanggal", "Jam Kerja", "", "", "Kehadiran", "", "Terlambat", "Pulang Cepat", "Total Jam Kerja", "Istirahat", "Lembur Awal", "Lembur Akhir", "Total Lembur", "Masuk Kerja", "Keterangan"]);
-        aoa.push(["", "Masuk", "Pulang", "Durasi", "Jam Masuk", "Jam Pulang", "", "", "", "", "", "", "", "", ""]);
-        merges.push({ s: { r: base + 8, c: 0 }, e: { r: base + 9, c: 0 } });
-        merges.push({ s: { r: base + 8, c: 1 }, e: { r: base + 8, c: 3 } });
-        merges.push({ s: { r: base + 8, c: 4 }, e: { r: base + 8, c: 5 } });
-        for (let c = 6; c <= 14; c++) merges.push({ s: { r: base + 8, c }, e: { r: base + 9, c } });
-
-        for (const r of b.rows) {
-          aoa.push([
-            `${r.dayName}, ${r.date}`,
-            r.scheduledStart || "-",
-            r.scheduledEnd || "-",
-            hm(r.workDurationMinutes),
-            isoToHm(r.scanIn),
-            isoToHm(r.scanOut),
-            r.lateMinutes != null ? hm(r.lateMinutes) : "-",
-            r.earlyLeaveMinutes != null ? hm(r.earlyLeaveMinutes) : "-",
-            hm(r.workDurationMinutes),
-            hm(r.istirahatMinutes),
-            r.overtimeStartMinutes != null ? hm(r.overtimeStartMinutes) : "-",
-            r.overtimeEndMinutes != null ? hm(r.overtimeEndMinutes) : "-",
-            r.overtimeMinutes != null ? hm(r.overtimeMinutes) : "-",
-            isHadir(r.status) ? 1 : 0,
-            r.note || "-",
-          ]);
-        }
-
-        const t = blockTotals(b.rows);
-        aoa.push(["TOTAL", "", "", "", "", "", jm(t.terlambat), jm(t.cepat), jm(t.kerja), jm(t.istirahat), jm(t.lemburAwal), jm(t.lemburAkhir), jm(t.lemburTotal), `${t.hadir} hari`, ""]);
-        merges.push({ s: { r: base + 41, c: 0 }, e: { r: base + 41, c: 5 } });
-        aoa.push([]);
-      });
-
-      const ws = XLSX.utils.aoa_to_sheet(aoa);
-      ws["!merges"] = merges;
-      ws["!cols"] = [
-        { wch: 20 }, { wch: 22 }, { wch: 8 }, { wch: 8 }, { wch: 10 }, { wch: 10 },
-        { wch: 11 }, { wch: 12 }, { wch: 15 }, { wch: 10 }, { wch: 11 }, { wch: 11 },
-        { wch: 11 }, { wch: 11 }, { wch: 22 },
-      ];
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Laporan Detail Kehadiran");
-      const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-      const blob = new Blob([wbout], { type: "application/octet-stream" });
+      const params = new URLSearchParams({ command: "detail", format, from: dr.from, to: dr.to });
+      if (pin) params.set("employeePin", pin);
+      if (name) params.set("name", name);
+      if (kantorId) params.set("kantorId", kantorId);
+      if (jabatanId) params.set("jabatanId", jabatanId);
+      const res = await fetch(`/api/reports/export?${params}`);
+      if (!res.ok) {
+        const j = await res.json().catch(() => null);
+        throw new Error(j?.error || "Gagal export");
+      }
+      const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `laporan-detail_${dr.from}_${dr.to}.xlsx`;
+      a.download = `laporan-detail_${dr.from}_${dr.to}.${format}`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success("Laporan Excel berhasil diunduh");
-    } catch {
-      toast.error("Gagal export Excel");
-    }
-    setExporting(null);
-  };
-
-  const handleExportPdf = () => {
-    setExporting("pdf");
-    try {
-      const dr = getDateRange();
-      const doc = new jsPDF({ orientation: "landscape" });
-
-      const head = [
-        ["Tanggal", "Jam Kerja", "", "", "Kehadiran", "", "Terlambat", "Pulang Cepat", "Total Jam Kerja", "Istirahat", "Lembur Awal", "Lembur Akhir", "Total Lembur", "Masuk Kerja", "Keterangan"],
-        ["", "Masuk", "Pulang", "Durasi", "Jam Masuk", "Jam Pulang", "", "", "", "", "", "", "", "", ""],
-      ];
-
-      blocks.forEach((b, bi) => {
-        if (bi > 0) doc.addPage();
-        doc.setFontSize(14);
-        doc.text("Laporan Fingerspot Solo", 14, 14);
-        doc.setFontSize(10);
-        doc.text(`${dr.from} s/d ${dr.to}`, 14, 20);
-        doc.setFontSize(9);
-        doc.text(`Nama: ${b.name}    ID/NIK: ${b.pin}    Jabatan: ${b.jabatan || "-"}    Kantor: ${b.kantor || "-"}`, 14, 26);
-
-        const body = b.rows.map((r) => [
-          `${r.dayName}, ${r.date}`,
-          r.scheduledStart || "-",
-          r.scheduledEnd || "-",
-          hm(r.workDurationMinutes),
-          isoToHm(r.scanIn),
-          isoToHm(r.scanOut),
-          r.lateMinutes != null ? hm(r.lateMinutes) : "-",
-          r.earlyLeaveMinutes != null ? hm(r.earlyLeaveMinutes) : "-",
-          hm(r.workDurationMinutes),
-          hm(r.istirahatMinutes),
-          r.overtimeStartMinutes != null ? hm(r.overtimeStartMinutes) : "-",
-          r.overtimeEndMinutes != null ? hm(r.overtimeEndMinutes) : "-",
-          r.overtimeMinutes != null ? hm(r.overtimeMinutes) : "-",
-          isHadir(r.status) ? "1" : "0",
-          r.note || "-",
-        ]);
-
-        const t = blockTotals(b.rows);
-        body.push(["TOTAL", "", "", "", "", "", jm(t.terlambat), jm(t.cepat), jm(t.kerja), jm(t.istirahat), jm(t.lemburAwal), jm(t.lemburAkhir), jm(t.lemburTotal), `${t.hadir} hari`, ""]);
-
-        (doc as any).autoTable({
-          head,
-          body,
-          startY: 31,
-          styles: { fontSize: 7, cellPadding: 1.2 },
-          headStyles: { fillColor: [59, 130, 246] },
-          bodyStyles: { textColor: 40 },
-          alternateRowStyles: { fillColor: [245, 247, 250] },
-        });
-      });
-
-      doc.save(`laporan-detail_${dr.from}_${dr.to}.pdf`);
-      toast.success("Laporan PDF berhasil diunduh");
-    } catch {
-      toast.error("Gagal export PDF");
+      toast.success(`Laporan ${format.toUpperCase()} berhasil diunduh`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : `Gagal export ${format.toUpperCase()}`);
     }
     setExporting(null);
   };
@@ -415,15 +304,15 @@ export default function ReportDetailPage() {
           <div className="mt-4 flex flex-wrap gap-2">
             <Button
               variant="secondary"
-              onClick={handleExportExcel}
+              onClick={() => exportFile("xlsx")}
               disabled={report.length === 0 || exporting !== null}
             >
               <FileSpreadsheet className="h-4 w-4 mr-1.5" />
-              {exporting === "excel" ? "Mengexport..." : "Export Excel"}
+              {exporting === "xlsx" ? "Mengexport..." : "Export Excel"}
             </Button>
             <Button
               variant="destructive"
-              onClick={handleExportPdf}
+              onClick={() => exportFile("pdf")}
               disabled={report.length === 0 || exporting !== null}
             >
               <FileText className="h-4 w-4 mr-1.5" />

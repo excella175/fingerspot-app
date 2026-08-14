@@ -8,9 +8,6 @@ import {
   FileText,
   Search,
 } from "lucide-react";
-import * as XLSX from "xlsx";
-import jsPDF from "jspdf";
-import "jspdf-autotable";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -172,91 +169,34 @@ export default function AttendanceReportPage() {
     );
   }
 
-  const exportExcel = () => {
-    const header = [
-      "No",
-      "ID",
-      "Nama Karyawan",
-      "Kantor",
-      "Jabatan",
-      ...daysArray.map(String),
-      "H",
-      "A",
-      "I",
-      "S",
-      "C",
-      "TL",
-      "Total Hari",
-    ];
-    const rows = reportData.map((emp, idx) => [
-      idx + 1,
-      emp.pin,
-      emp.name,
-      emp.kantor || "-",
-      emp.jabatan || "-",
-      ...daysArray.map((d) => getStatus(emp, d) || ""),
-      emp.totals.H,
-      emp.totals.A,
-      emp.totals.I,
-      emp.totals.S,
-      emp.totals.C,
-      emp.totals.TL,
-      emp.totals.total,
-    ]);
-    const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Laporan");
-    const d = getDateRange();
-    XLSX.writeFile(wb, `Laporan_Kehadiran_${d.from}_${d.to}.xlsx`);
-  };
+  const [exporting, setExporting] = useState<string | null>(null);
 
-  const exportPDF = () => {
-    const doc = new jsPDF("landscape", "mm", "a4");
-    const pageWidth = doc.internal.pageSize.getWidth();
-    doc.setFontSize(14);
-    const d = getDateRange();
-    doc.text(`Laporan Kehadiran - ${d.from} sd ${d.to}`, pageWidth / 2, 15, {
-      align: "center",
-    });
-    const header = [
-      "No",
-      "ID",
-      "Nama Karyawan",
-      "Kantor",
-      "Jabatan",
-      ...daysArray.map(String),
-      "H",
-      "A",
-      "I",
-      "S",
-      "C",
-      "TL",
-      "Total",
-    ];
-    const body = reportData.map((emp, idx) => [
-      idx + 1,
-      emp.pin,
-      emp.name,
-      emp.kantor || "-",
-      emp.jabatan || "-",
-      ...daysArray.map((d) => getStatus(emp, d) || "-"),
-      emp.totals.H,
-      emp.totals.A,
-      emp.totals.I,
-      emp.totals.S,
-      emp.totals.C,
-      emp.totals.TL,
-      emp.totals.total,
-    ]);
-    (doc as any).autoTable({
-      head: [header],
-      body,
-      startY: 22,
-      styles: { fontSize: 6, cellPadding: 1.5 },
-      headStyles: { fillColor: [59, 130, 246], fontSize: 6 },
-      tableWidth: "auto",
-    });
-    doc.save(`Laporan_Kehadiran_${d.from}_${d.to}.pdf`);
+  const exportFile = async (format: "xlsx" | "pdf") => {
+    setExporting(format);
+    try {
+      const d = getDateRange();
+      const params = new URLSearchParams({ command: "attendance", format, from: d.from, to: d.to });
+      if (pin) params.set("pin", pin);
+      if (name) params.set("name", name);
+      if (kantorId) params.set("kantorId", kantorId);
+      if (jabatanId) params.set("jabatanId", jabatanId);
+      const res = await fetch(`/api/reports/export?${params}`);
+      if (!res.ok) {
+        const j = await res.json().catch(() => null);
+        throw new Error(j?.error || "Gagal export");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `laporan-kehadiran_${d.from}_${d.to}.${format}`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`Laporan ${format.toUpperCase()} berhasil diunduh`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : `Gagal export ${format.toUpperCase()}`);
+    }
+    setExporting(null);
   };
 
   return (
@@ -348,19 +288,19 @@ export default function AttendanceReportPage() {
               </Button>
               <Button
                 variant="secondary"
-                onClick={exportExcel}
-                disabled={!data || reportData.length === 0}
+                onClick={() => exportFile("xlsx")}
+                disabled={!data || reportData.length === 0 || exporting !== null}
               >
                 <FileSpreadsheet className="h-4 w-4 mr-1.5" />
-                Excel
+                {exporting === "xlsx" ? "Mengexport..." : "Excel"}
               </Button>
               <Button
                 variant="destructive"
-                onClick={exportPDF}
-                disabled={!data || reportData.length === 0}
+                onClick={() => exportFile("pdf")}
+                disabled={!data || reportData.length === 0 || exporting !== null}
               >
                 <FileText className="h-4 w-4 mr-1.5" />
-                PDF
+                {exporting === "pdf" ? "Mengexport..." : "PDF"}
               </Button>
             </div>
           </div>
